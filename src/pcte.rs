@@ -182,7 +182,6 @@ impl PcteTreeNode {
                 }
             }
         }
-        println!("{:?} {:?}", self.node_handle, element);
         if self.node_handle == element {
             return Ok(index);
         }
