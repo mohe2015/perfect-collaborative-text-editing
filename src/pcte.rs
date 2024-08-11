@@ -68,10 +68,7 @@ impl Pcte {
         children
             .sort_by_cached_key(|element| self.right_origin_tree.node_last_index_of_node(element));
         for child in children {
-            if let Some(character) = child.node.character {
-                result.push(character);
-                result.push_str(&self.text_tree_node(child))
-            }
+            result.push_str(&self.text_tree_node(child))
         }
         result
     }
@@ -177,6 +174,6 @@ mod tests {
         );
         let text = pcte.text();
         assert_eq!(text, "hello");
-        panic!("{:#?}", pcte);
+        println!("{:#?}", pcte);
     }
 }
