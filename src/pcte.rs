@@ -51,25 +51,31 @@ impl Pcte {
             .left_origin_tree
             .node_at_index(&mut self.nodes, &mut self.right_origin_tree, index)
             .unwrap();
-        let right_origin = self
-            .right_origin_tree
-            .node_last_node_at_index(index)
-            .unwrap();
-
         left_origin.children.push(PcteTreeNode {
             node_handle,
             children: Vec::new(),
         });
+
+        let dbg = self.nodes[left_origin.node_handle.0].character;
+
+        let right_origin = self
+            .left_origin_tree
+            .node_at_index(&mut self.nodes, &mut self.right_origin_tree, index + 1)
+            .unwrap();
+        let right_origin = self
+            .right_origin_tree
+            .node_last_node_and_index_of_node(right_origin.node_handle)
+            .unwrap()
+            .0;
+
         right_origin.children.push(PcteTreeNode {
             node_handle,
             children: Vec::new(),
         });
+
         println!(
             "left origin: {:?}, index: {}, value: {}, right origin: {:?}",
-            self.nodes[left_origin.node_handle.0].character,
-            index,
-            character,
-            self.nodes[right_origin.node_handle.0].character,
+            dbg, index, character, self.nodes[right_origin.node_handle.0].character,
         );
 
         // TODO assert text order that the nodes are adjacent
@@ -83,36 +89,42 @@ impl Pcte {
         self.nodes[node.node_handle.0].character = None;
     }
 
-    pub fn text(&self) -> String {
-        self.text_tree_node(&self.left_origin_tree)
-    }
-
-    fn text_tree_node(&self, tree_node: &PcteTreeNode) -> String {
-        let mut result = String::new();
-        if let Some(character) = self.nodes[tree_node.node_handle.0].character {
-            result.push(character);
-        }
-        let mut children: Vec<_> = tree_node.children.iter().collect();
-        children.sort_by_cached_key(|element| {
-            isize::try_from(
-                self.right_origin_tree
-                    .node_last_index_of_node(element.node_handle)
-                    .unwrap(),
-            )
-            .unwrap()
-        });
-        for child in children {
-            result.push_str(&self.text_tree_node(child))
-        }
-        result
+    pub fn text(&mut self) -> String {
+        self.left_origin_tree
+            .text_tree_node(&self.nodes, &mut self.right_origin_tree)
     }
 }
 
 impl PcteTreeNode {
+    fn text_tree_node(
+        self: &PcteTreeNode,
+        nodes: &Vec<PcteNode>,
+        right_origin_tree: &mut PcteTreeNode,
+    ) -> String {
+        let mut result = String::new();
+        if let Some(character) = nodes[self.node_handle.0].character {
+            result.push(character);
+        }
+        let mut children: Vec<_> = self.children.iter().collect();
+        children.sort_by_cached_key(|element| {
+            isize::try_from(
+                right_origin_tree
+                    .node_last_node_and_index_of_node(element.node_handle)
+                    .unwrap()
+                    .1,
+            )
+            .unwrap()
+        });
+        for child in children {
+            result.push_str(&child.text_tree_node(nodes, right_origin_tree))
+        }
+        result
+    }
+
     fn node_at_index(
         &mut self,
         nodes: &mut Vec<PcteNode>,
-        right_origin_tree: &PcteTreeNode,
+        right_origin_tree: &mut PcteTreeNode,
         mut index: usize,
     ) -> Result<&mut PcteTreeNode, usize> {
         if let Some(_) = nodes[self.node_handle.0].character {
@@ -125,8 +137,9 @@ impl PcteTreeNode {
         children.sort_by_cached_key(|element| {
             isize::try_from(
                 right_origin_tree
-                    .node_last_index_of_node(element.node_handle)
-                    .unwrap(),
+                    .node_last_node_and_index_of_node(element.node_handle)
+                    .unwrap()
+                    .1,
             )
             .unwrap()
         });
@@ -184,18 +197,21 @@ impl PcteTreeNode {
     }
 
     /// Returns `Ok(index)` if the node is found and `Err(size)` if the node is not found.
-    pub fn node_last_index_of_node(&self, element: PcteNodeHandle) -> Result<usize, usize> {
+    pub fn node_last_node_and_index_of_node(
+        &mut self,
+        element: PcteNodeHandle,
+    ) -> Result<(&mut PcteTreeNode, usize), usize> {
         let mut index = 0;
-        for child in &self.children {
-            match child.node_last_index_of_node(element) {
-                Ok(result) => return Ok(index + result),
-                Err(result) => {
-                    index += result;
+        for child in &mut self.children {
+            match child.node_last_node_and_index_of_node(element) {
+                Ok((node, size)) => return Ok((node, index + size)),
+                Err(size) => {
+                    index += size;
                 }
             }
         }
         if self.node_handle == element {
-            return Ok(index);
+            return Ok((self, index));
         }
         index += 1;
         Err(index)
