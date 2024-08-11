@@ -55,6 +55,11 @@ impl Pcte {
         });
     }
 
+    pub fn delete(&mut self, index: usize) {
+        self.left_origin_tree
+            .delete_internal(&mut self.right_origin_tree, index);
+    }
+
     pub fn text(&self) -> String {
         self.text_tree_node(&self.left_origin_tree)
     }
@@ -75,6 +80,30 @@ impl Pcte {
 }
 
 impl PcteTreeNode {
+    fn delete_internal(
+        &mut self,
+        right_origin_tree: &PcteTreeNode,
+        mut index: usize,
+    ) -> Option<usize> {
+        if index == 0 {
+            self.node.character = None;
+            return None;
+        }
+        if let Some(_) = self.node.character {
+            index -= 1;
+        }
+        let mut children: Vec<_> = self.children.iter_mut().collect();
+        children.sort_by_cached_key(|element| right_origin_tree.node_last_index_of_node(element));
+        for child in children {
+            if let Some(new_index) = child.delete_internal(right_origin_tree, index) {
+                index = new_index;
+            } else {
+                return None;
+            }
+        }
+        Some(index)
+    }
+
     /// Returns `Ok(node)` if node is found and `Err(new_index)` if node is not found.
     pub fn node_first_node_at_index(
         &mut self,
