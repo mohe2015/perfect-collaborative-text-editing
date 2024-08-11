@@ -52,6 +52,19 @@ impl Pcte {
             children: Vec::new(),
         });
     }
+
+    pub fn text(&self) -> String {
+        self.text_tree_node(&self.left_origin_tree)
+    }
+
+    fn text_tree_node(&self, tree_node: &PcteTreeNode) -> String {
+        let mut result = String::new();
+        if let Some(character) = tree_node.node.character {
+            result.push(character);
+        }
+
+        result
+    }
 }
 
 impl PcteTreeNode {
