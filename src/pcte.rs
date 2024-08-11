@@ -14,7 +14,7 @@ pub struct PcteNode {
     pub character: Option<char>,
 }
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, PartialEq)]
 pub struct PcteNodeHandle(usize);
 
 #[derive(Debug)]
@@ -89,8 +89,10 @@ impl Pcte {
             result.push(character);
         }
         let mut children: Vec<_> = tree_node.children.iter().collect();
-        children
-            .sort_by_cached_key(|element| self.right_origin_tree.node_last_index_of_node(element));
+        children.sort_by_cached_key(|element| {
+            self.right_origin_tree
+                .node_last_index_of_node(element.node_handle)
+        });
         for child in children {
             result.push_str(&self.text_tree_node(child))
         }
@@ -114,7 +116,9 @@ impl PcteTreeNode {
             index -= 1;
         }
         let mut children: Vec<_> = self.children.iter_mut().collect();
-        children.sort_by_cached_key(|element| right_origin_tree.node_last_index_of_node(element));
+        children.sort_by_cached_key(|element| {
+            right_origin_tree.node_last_index_of_node(element.node_handle)
+        });
         for child in children {
             if let Some(new_index) = child.delete_internal(nodes, right_origin_tree, index) {
                 index = new_index;
@@ -168,7 +172,7 @@ impl PcteTreeNode {
     }
 
     /// Returns `Ok(index)` if the node is found and `Err(size)` if the node is not found.
-    pub fn node_last_index_of_node(&self, element: &PcteTreeNode) -> Result<usize, usize> {
+    pub fn node_last_index_of_node(&self, element: PcteNodeHandle) -> Result<usize, usize> {
         let mut index = 0;
         for child in &self.children {
             match child.node_last_index_of_node(element) {
@@ -178,10 +182,12 @@ impl PcteTreeNode {
                 }
             }
         }
-        if ptr::eq(self, element) {
+        println!("{:?} {:?}", self.node_handle, element);
+        if self.node_handle == element {
             return Ok(index);
         }
-        unreachable!()
+        index += 1;
+        Err(index)
     }
 }
 
@@ -217,10 +223,10 @@ mod tests {
         let mut pcte = Pcte::new();
         pcte.insert(0, 'o');
         pcte.insert(0, 'l');
+        println!("{:#?}", pcte);
         assert_eq!(pcte.text(), "lo");
         pcte.delete(0);
         let text = pcte.text();
         assert_eq!(text, "o");
-        println!("{:#?}", pcte);
     }
 }
