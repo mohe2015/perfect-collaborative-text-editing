@@ -53,7 +53,7 @@ impl Pcte {
         ) {
             Ok(v) => {
                 self.right_origin_tree
-                    .node_last_node_and_index_of_node(&self.nodes, v.node_handle)
+                    .node_last_node_and_index_including_deleted_of_node(&self.nodes, v.node_handle)
                     .unwrap()
                     .0
             }
@@ -124,9 +124,9 @@ impl PcteTreeNode {
         }
         let mut children: Vec<_> = self.children.iter().collect();
         children.sort_by_cached_key(|element| {
-            isize::try_from(
+            -isize::try_from(
                 right_origin_tree
-                    .node_last_node_and_index_of_node(nodes, element.node_handle)
+                    .node_last_node_and_index_including_deleted_of_node(nodes, element.node_handle)
                     .unwrap()
                     .1,
             )
@@ -152,9 +152,9 @@ impl PcteTreeNode {
         }
         let mut children: Vec<_> = self.children.iter_mut().collect();
         children.sort_by_cached_key(|element| {
-            isize::try_from(
+            -isize::try_from(
                 right_origin_tree
-                    .node_last_node_and_index_of_node(nodes, element.node_handle)
+                    .node_last_node_and_index_including_deleted_of_node(nodes, element.node_handle)
                     .unwrap()
                     .1,
             )
@@ -218,14 +218,14 @@ impl PcteTreeNode {
     }
 
     /// Returns `Ok(index)` if the node is found and `Err(size)` if the node is not found.
-    pub fn node_last_node_and_index_of_node(
+    pub fn node_last_node_and_index_including_deleted_of_node(
         &mut self,
         nodes: &Vec<PcteNode>,
         element: PcteNodeHandle,
     ) -> Result<(&mut PcteTreeNode, usize), usize> {
         let mut index = 0;
         for child in &mut self.children {
-            match child.node_last_node_and_index_of_node(nodes, element) {
+            match child.node_last_node_and_index_including_deleted_of_node(nodes, element) {
                 Ok((node, size)) => return Ok((node, index + size)),
                 Err(size) => {
                     index += size;
@@ -235,9 +235,7 @@ impl PcteTreeNode {
         if self.node_handle == element {
             return Ok((self, index));
         }
-        if let Some(_) = nodes[self.node_handle.0].character {
-            index += 1;
-        }
+        index += 1;
         Err(index)
     }
 }
