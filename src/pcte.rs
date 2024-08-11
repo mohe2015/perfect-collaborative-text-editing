@@ -224,4 +224,26 @@ mod tests {
         assert_eq!(text, "");
         println!("{:#?}", pcte);
     }
+
+    #[test]
+    fn it_works3() {
+        let mut pcte = Pcte::new();
+        pcte.insert(
+            0,
+            PcteNode {
+                character: Some('o'),
+            },
+        );
+        pcte.insert(
+            0,
+            PcteNode {
+                character: Some('l'),
+            },
+        );
+        assert_eq!(pcte.text(), "lo");
+        pcte.delete(0);
+        let text = pcte.text();
+        assert_eq!(text, "o");
+        println!("{:#?}", pcte);
+    }
 }
