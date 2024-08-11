@@ -2,6 +2,7 @@
 
 ```rust
 export RUSTFLAGS="-Zpolonius"
+export RUST_BACKTRACE=1
 
 cargo fuzz run fuzz_target_1
 cargo fuzz run fuzz_target_1 fuzz/artifacts/fuzz_target_1/minimized-from-d9dd7c9f723708057abf5d76d31591615d27e224
