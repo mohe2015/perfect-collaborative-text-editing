@@ -47,10 +47,14 @@ impl Pcte {
         self.nodes.push(node);
 
         // TODO FIXME this is total bullshit this needs the same code as delete etc
-        let left_origin = self
-            .left_origin_tree
-            .node_at_index(&mut self.nodes, &mut self.right_origin_tree, index)
-            .unwrap();
+        let left_origin = match self.left_origin_tree.node_at_index(
+            &mut self.nodes,
+            &mut self.right_origin_tree,
+            index,
+        ) {
+            Ok(v) => v,
+            Err(_) => &mut self.left_origin_tree,
+        };
         left_origin.children.push(PcteTreeNode {
             node_handle,
             children: Vec::new(),
@@ -58,15 +62,19 @@ impl Pcte {
 
         let dbg = self.nodes[left_origin.node_handle.0].character;
 
-        let right_origin = self
-            .left_origin_tree
-            .node_at_index(&mut self.nodes, &mut self.right_origin_tree, index + 1)
-            .unwrap();
-        let right_origin = self
-            .right_origin_tree
-            .node_last_node_and_index_of_node(right_origin.node_handle)
-            .unwrap()
-            .0;
+        let right_origin = match self.left_origin_tree.node_at_index(
+            &mut self.nodes,
+            &mut self.right_origin_tree,
+            index + 1,
+        ) {
+            Ok(v) => {
+                self.right_origin_tree
+                    .node_last_node_and_index_of_node(v.node_handle)
+                    .unwrap()
+                    .0
+            }
+            Err(_) => &mut self.right_origin_tree,
+        };
 
         right_origin.children.push(PcteTreeNode {
             node_handle,
