@@ -124,7 +124,7 @@ impl PcteTreeNode {
         }
         let mut children: Vec<_> = self.children.iter().collect();
         children.sort_by_cached_key(|element| {
-            -isize::try_from(
+            isize::try_from(
                 right_origin_tree
                     .node_last_node_and_index_including_deleted_of_node(nodes, element.node_handle)
                     .unwrap()
@@ -152,7 +152,7 @@ impl PcteTreeNode {
         }
         let mut children: Vec<_> = self.children.iter_mut().collect();
         children.sort_by_cached_key(|element| {
-            -isize::try_from(
+            isize::try_from(
                 right_origin_tree
                     .node_last_node_and_index_including_deleted_of_node(nodes, element.node_handle)
                     .unwrap()
