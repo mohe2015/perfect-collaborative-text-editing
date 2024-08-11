@@ -56,8 +56,11 @@ impl Pcte {
     }
 
     pub fn delete(&mut self, index: usize) {
-        self.left_origin_tree
-            .delete_internal(&mut self.right_origin_tree, index);
+        assert_eq!(
+            self.left_origin_tree
+                .delete_internal(&mut self.right_origin_tree, index),
+            None
+        );
     }
 
     pub fn text(&self) -> String {
@@ -85,11 +88,12 @@ impl PcteTreeNode {
         right_origin_tree: &PcteTreeNode,
         mut index: usize,
     ) -> Option<usize> {
-        if index == 0 {
-            self.node.character = None;
-            return None;
-        }
         if let Some(_) = self.node.character {
+            if index == 0 {
+                // TODO FIXME this doesn't delete in the right origin tree
+                self.node.character = None;
+                return None;
+            }
             index -= 1;
         }
         let mut children: Vec<_> = self.children.iter_mut().collect();
@@ -203,6 +207,21 @@ mod tests {
         );
         let text = pcte.text();
         assert_eq!(text, "hello");
+        println!("{:#?}", pcte);
+    }
+
+    #[test]
+    fn it_works2() {
+        let mut pcte = Pcte::new();
+        pcte.insert(
+            0,
+            PcteNode {
+                character: Some('h'),
+            },
+        );
+        pcte.delete(0);
+        let text = pcte.text();
+        assert_eq!(text, "");
         println!("{:#?}", pcte);
     }
 }
