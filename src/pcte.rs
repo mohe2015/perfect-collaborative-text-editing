@@ -97,6 +97,12 @@ impl Pcte {
             .left_origin_tree
             .node_at_index(&mut self.nodes, &mut self.right_origin_tree, index)
             .unwrap();
+
+        println!(
+            "delete {} {:?}",
+            index, self.nodes[node.node_handle.0].character
+        );
+
         self.nodes[node.node_handle.0].character = None;
     }
 
