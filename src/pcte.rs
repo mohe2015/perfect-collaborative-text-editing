@@ -1,15 +1,17 @@
 // runtime borrow checking or handles or raw pointers
 
+#[derive(Debug)]
 pub struct Pcte {
     pub left_origin_tree: PcteTreeNode,
     pub right_origin_tree: PcteTreeNode,
 }
 
-#[derive(Clone)]
+#[derive(Debug, Clone)]
 pub struct PcteNode {
     pub character: Option<char>,
 }
 
+#[derive(Debug)]
 pub struct PcteTreeNode {
     pub node: PcteNode,
     pub children: Vec<PcteTreeNode>,
@@ -85,11 +87,52 @@ impl PcteTreeNode {
                 }
             };
         }
-        index -= 1;
         if index == 0 {
             Ok(self)
         } else {
+            index -= 1;
             Err(index)
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn it_works() {
+        let mut pcte = Pcte::new();
+        pcte.insert(
+            0,
+            PcteNode {
+                character: Some('h'),
+            },
+        );
+        pcte.insert(
+            1,
+            PcteNode {
+                character: Some('e'),
+            },
+        );
+        pcte.insert(
+            2,
+            PcteNode {
+                character: Some('l'),
+            },
+        );
+        pcte.insert(
+            3,
+            PcteNode {
+                character: Some('l'),
+            },
+        );
+        pcte.insert(
+            4,
+            PcteNode {
+                character: Some('o'),
+            },
+        );
+        panic!("{:#?}", pcte);
     }
 }
