@@ -4,6 +4,7 @@ use std::ptr;
 
 #[derive(Debug)]
 pub struct Pcte {
+    pub nodes: Vec<PcteNode>,
     pub left_origin_tree: PcteTreeNode,
     pub right_origin_tree: PcteTreeNode,
 }
@@ -13,29 +14,41 @@ pub struct PcteNode {
     pub character: Option<char>,
 }
 
+#[derive(Debug, Clone, Copy)]
+pub struct PcteNodeHandle(usize);
+
 #[derive(Debug)]
 pub struct PcteTreeNode {
-    pub node: PcteNode,
+    pub node_handle: PcteNodeHandle,
     pub children: Vec<PcteTreeNode>,
 }
 
 impl Pcte {
     pub fn new() -> Self {
-        let left_root_node = PcteNode { character: None };
-        let right_root_node = PcteNode { character: None };
+        let nodes = vec![PcteNode { character: None }];
         Self {
+            nodes,
             left_origin_tree: PcteTreeNode {
-                node: left_root_node,
+                node_handle: PcteNodeHandle(0),
                 children: Vec::new(),
             },
             right_origin_tree: PcteTreeNode {
-                node: right_root_node,
+                node_handle: PcteNodeHandle(0),
                 children: Vec::new(),
             },
         }
     }
 
-    pub fn insert(&mut self, index: usize, node: PcteNode) {
+    fn get_node(&self, handle: PcteNodeHandle) -> &PcteNode {
+        &self.nodes[handle.0]
+    }
+
+    pub fn insert(&mut self, index: usize, character: char) {
+        let node = PcteNode {
+            character: Some(character),
+        };
+        let node_handle = PcteNodeHandle(self.nodes.len());
+        self.nodes.push(node);
         let left_origin = self
             .left_origin_tree
             .node_first_node_at_index(index)
@@ -46,19 +59,22 @@ impl Pcte {
             .unwrap();
 
         left_origin.children.push(PcteTreeNode {
-            node: node.clone(), // TODO FIXME
+            node_handle,
             children: Vec::new(),
         });
         right_origin.children.push(PcteTreeNode {
-            node: node.clone(), // TODO FIXME
+            node_handle,
             children: Vec::new(),
         });
     }
 
     pub fn delete(&mut self, index: usize) {
         assert_eq!(
-            self.left_origin_tree
-                .delete_internal(&mut self.right_origin_tree, index),
+            self.left_origin_tree.delete_internal(
+                &mut self.nodes,
+                &mut self.right_origin_tree,
+                index
+            ),
             None
         );
     }
@@ -69,7 +85,7 @@ impl Pcte {
 
     fn text_tree_node(&self, tree_node: &PcteTreeNode) -> String {
         let mut result = String::new();
-        if let Some(character) = tree_node.node.character {
+        if let Some(character) = self.get_node(tree_node.node_handle).character {
             result.push(character);
         }
         let mut children: Vec<_> = tree_node.children.iter().collect();
@@ -85,13 +101,14 @@ impl Pcte {
 impl PcteTreeNode {
     fn delete_internal(
         &mut self,
+        nodes: &mut Vec<PcteNode>,
         right_origin_tree: &PcteTreeNode,
         mut index: usize,
     ) -> Option<usize> {
-        if let Some(_) = self.node.character {
+        if let Some(_) = nodes[self.node_handle.0].character {
             if index == 0 {
                 // TODO FIXME this doesn't delete in the right origin tree
-                self.node.character = None;
+                nodes[self.node_handle.0].character = None;
                 return None;
             }
             index -= 1;
@@ -99,7 +116,7 @@ impl PcteTreeNode {
         let mut children: Vec<_> = self.children.iter_mut().collect();
         children.sort_by_cached_key(|element| right_origin_tree.node_last_index_of_node(element));
         for child in children {
-            if let Some(new_index) = child.delete_internal(right_origin_tree, index) {
+            if let Some(new_index) = child.delete_internal(nodes, right_origin_tree, index) {
                 index = new_index;
             } else {
                 return None;
@@ -175,36 +192,11 @@ mod tests {
     #[test]
     fn it_works() {
         let mut pcte = Pcte::new();
-        pcte.insert(
-            0,
-            PcteNode {
-                character: Some('h'),
-            },
-        );
-        pcte.insert(
-            1,
-            PcteNode {
-                character: Some('e'),
-            },
-        );
-        pcte.insert(
-            2,
-            PcteNode {
-                character: Some('l'),
-            },
-        );
-        pcte.insert(
-            3,
-            PcteNode {
-                character: Some('l'),
-            },
-        );
-        pcte.insert(
-            4,
-            PcteNode {
-                character: Some('o'),
-            },
-        );
+        pcte.insert(0, 'h');
+        pcte.insert(1, 'e');
+        pcte.insert(2, 'l');
+        pcte.insert(3, 'l');
+        pcte.insert(4, 'o');
         let text = pcte.text();
         assert_eq!(text, "hello");
         println!("{:#?}", pcte);
@@ -213,12 +205,7 @@ mod tests {
     #[test]
     fn it_works2() {
         let mut pcte = Pcte::new();
-        pcte.insert(
-            0,
-            PcteNode {
-                character: Some('h'),
-            },
-        );
+        pcte.insert(0, 'h');
         pcte.delete(0);
         let text = pcte.text();
         assert_eq!(text, "");
@@ -228,18 +215,8 @@ mod tests {
     #[test]
     fn it_works3() {
         let mut pcte = Pcte::new();
-        pcte.insert(
-            0,
-            PcteNode {
-                character: Some('o'),
-            },
-        );
-        pcte.insert(
-            0,
-            PcteNode {
-                character: Some('l'),
-            },
-        );
+        pcte.insert(0, 'o');
+        pcte.insert(0, 'l');
         assert_eq!(pcte.text(), "lo");
         pcte.delete(0);
         let text = pcte.text();
