@@ -64,7 +64,7 @@ impl Pcte {
         if let Some(character) = tree_node.node.character {
             result.push(character);
         }
-        let children: Vec<_> = tree_node.children.iter().collect();
+        let mut children: Vec<_> = tree_node.children.iter().collect();
         children
             .sort_by_cached_key(|element| self.right_origin_tree.node_last_index_of_node(element));
         for child in children {
