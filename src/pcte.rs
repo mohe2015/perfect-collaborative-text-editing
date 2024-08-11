@@ -39,10 +39,6 @@ impl Pcte {
         }
     }
 
-    fn get_node(&self, handle: PcteNodeHandle) -> &PcteNode {
-        &self.nodes[handle.0]
-    }
-
     pub fn insert(&mut self, index: usize, character: char) {
         let node = PcteNode {
             character: Some(character),
@@ -66,6 +62,15 @@ impl Pcte {
             node_handle,
             children: Vec::new(),
         });
+        println!(
+            "left origin: {:?}, index: {}, value: {}, right origin: {:?}",
+            self.nodes[left_origin.node_handle.0].character,
+            index,
+            character,
+            self.nodes[right_origin.node_handle.0].character,
+        );
+
+        // TODO assert text order that the nodes are adjacent
     }
 
     pub fn delete(&mut self, index: usize) {
@@ -85,13 +90,17 @@ impl Pcte {
 
     fn text_tree_node(&self, tree_node: &PcteTreeNode) -> String {
         let mut result = String::new();
-        if let Some(character) = self.get_node(tree_node.node_handle).character {
+        if let Some(character) = self.nodes[tree_node.node_handle.0].character {
             result.push(character);
         }
         let mut children: Vec<_> = tree_node.children.iter().collect();
         children.sort_by_cached_key(|element| {
-            self.right_origin_tree
-                .node_last_index_of_node(element.node_handle)
+            isize::try_from(
+                self.right_origin_tree
+                    .node_last_index_of_node(element.node_handle)
+                    .unwrap(),
+            )
+            .unwrap()
         });
         for child in children {
             result.push_str(&self.text_tree_node(child))
@@ -117,7 +126,12 @@ impl PcteTreeNode {
         }
         let mut children: Vec<_> = self.children.iter_mut().collect();
         children.sort_by_cached_key(|element| {
-            right_origin_tree.node_last_index_of_node(element.node_handle)
+            isize::try_from(
+                right_origin_tree
+                    .node_last_index_of_node(element.node_handle)
+                    .unwrap(),
+            )
+            .unwrap()
         });
         for child in children {
             if let Some(new_index) = child.delete_internal(nodes, right_origin_tree, index) {
