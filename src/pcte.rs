@@ -1,5 +1,7 @@
 // runtime borrow checking or handles or raw pointers
 
+use std::ptr;
+
 #[derive(Debug)]
 pub struct Pcte {
     pub left_origin_tree: PcteTreeNode,
@@ -62,12 +64,21 @@ impl Pcte {
         if let Some(character) = tree_node.node.character {
             result.push(character);
         }
-
+        let children: Vec<_> = tree_node.children.iter().collect();
+        children
+            .sort_by_cached_key(|element| self.right_origin_tree.node_last_index_of_node(element));
+        for child in children {
+            if let Some(character) = child.node.character {
+                result.push(character);
+                result.push_str(&self.text_tree_node(child))
+            }
+        }
         result
     }
 }
 
 impl PcteTreeNode {
+    /// Returns `Ok(node)` if node is found and `Err(new_index)` if node is not found.
     pub fn node_first_node_at_index(
         &mut self,
         mut index: usize,
@@ -88,6 +99,7 @@ impl PcteTreeNode {
         }
     }
 
+    /// Returns `Ok(node)` if node is found and `Err(new_index)` if node is not found.
     pub fn node_last_node_at_index<'a>(
         &'a mut self,
         mut index: usize,
@@ -106,6 +118,23 @@ impl PcteTreeNode {
             index -= 1;
             Err(index)
         }
+    }
+
+    /// Returns `Ok(index)` if the node is found and `Err(size)` if the node is not found.
+    pub fn node_last_index_of_node(&self, element: &PcteTreeNode) -> Result<usize, usize> {
+        let mut index = 0;
+        for child in &self.children {
+            match child.node_last_index_of_node(element) {
+                Ok(result) => return Ok(index + result),
+                Err(result) => {
+                    index += result;
+                }
+            }
+        }
+        if ptr::eq(self, element) {
+            return Ok(index);
+        }
+        unreachable!()
     }
 }
 
@@ -146,6 +175,8 @@ mod tests {
                 character: Some('o'),
             },
         );
+        let text = pcte.text();
+        assert_eq!(text, "hello");
         panic!("{:#?}", pcte);
     }
 }
