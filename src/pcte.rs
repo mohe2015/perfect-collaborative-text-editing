@@ -49,7 +49,7 @@ impl Pcte {
         let right_origin = match self.left_origin_tree.node_at_index(
             &mut self.nodes,
             &mut self.right_origin_tree,
-            index + 1,
+            index,
         ) {
             Ok(v) => {
                 self.right_origin_tree
@@ -68,13 +68,13 @@ impl Pcte {
         let dbg2 = self.nodes[right_origin.node_handle.0].character;
 
         // TODO FIXME this is total bullshit this needs the same code as delete etc
-        let left_origin = match self.left_origin_tree.node_at_index(
-            &mut self.nodes,
-            &mut self.right_origin_tree,
-            index,
-        ) {
-            Ok(v) => v,
-            Err(_) => &mut self.left_origin_tree,
+
+        let left_origin = if index == 0 {
+            &mut self.left_origin_tree
+        } else {
+            self.left_origin_tree
+                .node_at_index(&mut self.nodes, &mut self.right_origin_tree, index - 1)
+                .unwrap()
         };
 
         let dbg = self.nodes[left_origin.node_handle.0].character;
@@ -221,7 +221,6 @@ impl PcteTreeNode {
                 }
             }
         }
-        println!("{:?}, {:?}", self.node_handle, element);
         if self.node_handle == element {
             return Ok((self, index));
         }
