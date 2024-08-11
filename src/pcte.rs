@@ -53,7 +53,7 @@ impl Pcte {
         ) {
             Ok(v) => {
                 self.right_origin_tree
-                    .node_last_node_and_index_of_node(v.node_handle)
+                    .node_last_node_and_index_of_node(&self.nodes, v.node_handle)
                     .unwrap()
                     .0
             }
@@ -120,7 +120,7 @@ impl PcteTreeNode {
         children.sort_by_cached_key(|element| {
             isize::try_from(
                 right_origin_tree
-                    .node_last_node_and_index_of_node(element.node_handle)
+                    .node_last_node_and_index_of_node(nodes, element.node_handle)
                     .unwrap()
                     .1,
             )
@@ -148,7 +148,7 @@ impl PcteTreeNode {
         children.sort_by_cached_key(|element| {
             isize::try_from(
                 right_origin_tree
-                    .node_last_node_and_index_of_node(element.node_handle)
+                    .node_last_node_and_index_of_node(nodes, element.node_handle)
                     .unwrap()
                     .1,
             )
@@ -168,53 +168,58 @@ impl PcteTreeNode {
     /// Returns `Ok(node)` if node is found and `Err(new_index)` if node is not found.
     pub fn node_first_node_at_index(
         &mut self,
+        nodes: &Vec<PcteNode>,
         mut index: usize,
     ) -> Result<&mut PcteTreeNode, usize> {
-        if index == 0 {
-            Ok(self)
-        } else {
-            index -= 1;
-            for child in &mut self.children {
-                match child.node_first_node_at_index(index) {
-                    Ok(ok) => return Ok(ok),
-                    Err(new_index) => {
-                        index = new_index;
-                    }
-                };
+        if let Some(_) = nodes[self.node_handle.0].character {
+            if index == 0 {
+                return Ok(self);
             }
-            Err(index)
+            index -= 1;
         }
-    }
-
-    /// Returns `Ok(node)` if node is found and `Err(new_index)` if node is not found.
-    pub fn node_last_node_at_index<'a>(
-        &'a mut self,
-        mut index: usize,
-    ) -> Result<&'a mut PcteTreeNode, usize> {
         for child in &mut self.children {
-            match child.node_first_node_at_index(index) {
+            match child.node_first_node_at_index(nodes, index) {
                 Ok(ok) => return Ok(ok),
                 Err(new_index) => {
                     index = new_index;
                 }
             };
         }
-        if index == 0 {
-            Ok(self)
-        } else {
-            index -= 1;
-            Err(index)
+        Err(index)
+    }
+
+    /// Returns `Ok(node)` if node is found and `Err(new_index)` if node is not found.
+    pub fn node_last_node_at_index<'a>(
+        &'a mut self,
+        nodes: &Vec<PcteNode>,
+        mut index: usize,
+    ) -> Result<&'a mut PcteTreeNode, usize> {
+        for child in &mut self.children {
+            match child.node_last_node_at_index(nodes, index) {
+                Ok(ok) => return Ok(ok),
+                Err(new_index) => {
+                    index = new_index;
+                }
+            };
         }
+        if let Some(_) = nodes[self.node_handle.0].character {
+            index -= 1;
+            if index == 0 {
+                return Ok(self);
+            }
+        }
+        Err(index)
     }
 
     /// Returns `Ok(index)` if the node is found and `Err(size)` if the node is not found.
     pub fn node_last_node_and_index_of_node(
         &mut self,
+        nodes: &Vec<PcteNode>,
         element: PcteNodeHandle,
     ) -> Result<(&mut PcteTreeNode, usize), usize> {
         let mut index = 0;
         for child in &mut self.children {
-            match child.node_last_node_and_index_of_node(element) {
+            match child.node_last_node_and_index_of_node(nodes, element) {
                 Ok((node, size)) => return Ok((node, index + size)),
                 Err(size) => {
                     index += size;
@@ -224,7 +229,9 @@ impl PcteTreeNode {
         if self.node_handle == element {
             return Ok((self, index));
         }
-        index += 1;
+        if let Some(_) = nodes[self.node_handle.0].character {
+            index += 1;
+        }
         Err(index)
     }
 }
