@@ -29,15 +29,15 @@ impl<'a> arbitrary::Arbitrary<'a> for FixtureOperations {
                 size += 1;
                 element
             } else {
-                //match bool::arbitrary(u)? {
-                //     true => {
-                let element = FixtureOperation::Insert {
-                    position: u.int_in_range(0..=size)?,
-                    character: char::from_u32(u.int_in_range(0x21..=0x7e)?).unwrap(),
-                };
-                size += 1;
-                element
-                /*   }
+                match bool::arbitrary(u)? {
+                    true => {
+                        let element = FixtureOperation::Insert {
+                            position: u.int_in_range(0..=size)?,
+                            character: char::from_u32(u.int_in_range(0x21..=0x7e)?).unwrap(),
+                        };
+                        size += 1;
+                        element
+                    }
                     false => {
                         let element = FixtureOperation::Delete {
                             position: u.int_in_range(0..=size - 1)?,
@@ -45,7 +45,7 @@ impl<'a> arbitrary::Arbitrary<'a> for FixtureOperations {
                         size -= 1;
                         element
                     }
-                }*/
+                }
             };
 
             my_collection.push(element);
