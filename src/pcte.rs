@@ -5,6 +5,7 @@ pub struct Pcte {
     pub right_origin_tree: PcteTreeNode,
 }
 
+#[derive(Clone)]
 pub struct PcteNode {
     pub character: Option<char>,
 }
@@ -30,16 +31,37 @@ impl Pcte {
         }
     }
 
-    pub fn insert(&mut self, index: usize, node: PcteNode) {}
+    pub fn insert(&mut self, index: usize, node: PcteNode) {
+        let left_origin = self
+            .left_origin_tree
+            .node_first_node_at_index(index)
+            .unwrap();
+        let right_origin = self
+            .right_origin_tree
+            .node_last_node_at_index(index)
+            .unwrap();
+
+        left_origin.children.push(PcteTreeNode {
+            node: node.clone(), // TODO FIXME
+            children: Vec::new(),
+        });
+        right_origin.children.push(PcteTreeNode {
+            node: node.clone(), // TODO FIXME
+            children: Vec::new(),
+        });
+    }
 }
 
 impl PcteTreeNode {
-    pub fn node_first_node_at_index(&self, mut index: usize) -> Result<&PcteTreeNode, usize> {
+    pub fn node_first_node_at_index(
+        &mut self,
+        mut index: usize,
+    ) -> Result<&mut PcteTreeNode, usize> {
         if index == 0 {
             Ok(self)
         } else {
             index -= 1;
-            for child in &self.children {
+            for child in &mut self.children {
                 match child.node_first_node_at_index(index) {
                     Ok(ok) => return Ok(ok),
                     Err(new_index) => {
@@ -51,8 +73,11 @@ impl PcteTreeNode {
         }
     }
 
-    pub fn node_last_node_at_index(&self, mut index: usize) -> Result<&PcteTreeNode, usize> {
-        for child in &self.children {
+    pub fn node_last_node_at_index<'a>(
+        &'a mut self,
+        mut index: usize,
+    ) -> Result<&'a mut PcteTreeNode, usize> {
+        for child in &mut self.children {
             match child.node_first_node_at_index(index) {
                 Ok(ok) => return Ok(ok),
                 Err(new_index) => {
