@@ -35,7 +35,7 @@ impl Pcte {
 
 impl PcteTreeNode {
     pub fn node_first_node_at_index(&self, mut index: usize) -> Result<&PcteTreeNode, usize> {
-        if (index == 0) {
+        if index == 0 {
             Ok(self)
         } else {
             index -= 1;
@@ -51,5 +51,20 @@ impl PcteTreeNode {
         }
     }
 
-    pub fn node_last_node_at_index(&self, index: usize) -> &PcteTreeNode {}
+    pub fn node_last_node_at_index(&self, mut index: usize) -> Result<&PcteTreeNode, usize> {
+        for child in &self.children {
+            match child.node_first_node_at_index(index) {
+                Ok(ok) => return Ok(ok),
+                Err(new_index) => {
+                    index = new_index;
+                }
+            };
+        }
+        index -= 1;
+        if index == 0 {
+            Ok(self)
+        } else {
+            Err(index)
+        }
+    }
 }
