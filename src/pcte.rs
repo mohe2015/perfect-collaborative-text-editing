@@ -46,22 +46,6 @@ impl Pcte {
         let node_handle = PcteNodeHandle(self.nodes.len());
         self.nodes.push(node);
 
-        // TODO FIXME this is total bullshit this needs the same code as delete etc
-        let left_origin = match self.left_origin_tree.node_at_index(
-            &mut self.nodes,
-            &mut self.right_origin_tree,
-            index,
-        ) {
-            Ok(v) => v,
-            Err(_) => &mut self.left_origin_tree,
-        };
-        left_origin.children.push(PcteTreeNode {
-            node_handle,
-            children: Vec::new(),
-        });
-
-        let dbg = self.nodes[left_origin.node_handle.0].character;
-
         let right_origin = match self.left_origin_tree.node_at_index(
             &mut self.nodes,
             &mut self.right_origin_tree,
@@ -81,9 +65,28 @@ impl Pcte {
             children: Vec::new(),
         });
 
+        let dbg2 = self.nodes[right_origin.node_handle.0].character;
+
+        // TODO FIXME this is total bullshit this needs the same code as delete etc
+        let left_origin = match self.left_origin_tree.node_at_index(
+            &mut self.nodes,
+            &mut self.right_origin_tree,
+            index,
+        ) {
+            Ok(v) => v,
+            Err(_) => &mut self.left_origin_tree,
+        };
+
+        let dbg = self.nodes[left_origin.node_handle.0].character;
+
+        left_origin.children.push(PcteTreeNode {
+            node_handle,
+            children: Vec::new(),
+        });
+
         println!(
             "left origin: {:?}, index: {}, value: {}, right origin: {:?}",
-            dbg, index, character, self.nodes[right_origin.node_handle.0].character,
+            dbg, index, character, dbg2,
         );
 
         // TODO assert text order that the nodes are adjacent
@@ -218,6 +221,7 @@ impl PcteTreeNode {
                 }
             }
         }
+        println!("{:?}, {:?}", self.node_handle, element);
         if self.node_handle == element {
             return Ok((self, index));
         }
