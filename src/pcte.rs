@@ -45,9 +45,11 @@ impl Pcte {
         };
         let node_handle = PcteNodeHandle(self.nodes.len());
         self.nodes.push(node);
+
+        // TODO FIXME this is total bullshit this needs the same code as delete etc
         let left_origin = self
             .left_origin_tree
-            .node_first_node_at_index(index)
+            .node_at_index(&mut self.nodes, &mut self.right_origin_tree, index)
             .unwrap();
         let right_origin = self
             .right_origin_tree
@@ -74,14 +76,11 @@ impl Pcte {
     }
 
     pub fn delete(&mut self, index: usize) {
-        assert_eq!(
-            self.left_origin_tree.delete_internal(
-                &mut self.nodes,
-                &mut self.right_origin_tree,
-                index
-            ),
-            None
-        );
+        let node = self
+            .left_origin_tree
+            .node_at_index(&mut self.nodes, &mut self.right_origin_tree, index)
+            .unwrap();
+        self.nodes[node.node_handle.0].character = None;
     }
 
     pub fn text(&self) -> String {
@@ -110,17 +109,15 @@ impl Pcte {
 }
 
 impl PcteTreeNode {
-    fn delete_internal(
+    fn node_at_index(
         &mut self,
         nodes: &mut Vec<PcteNode>,
         right_origin_tree: &PcteTreeNode,
         mut index: usize,
-    ) -> Option<usize> {
+    ) -> Result<&mut PcteTreeNode, usize> {
         if let Some(_) = nodes[self.node_handle.0].character {
             if index == 0 {
-                // TODO FIXME this doesn't delete in the right origin tree
-                nodes[self.node_handle.0].character = None;
-                return None;
+                return Ok(self);
             }
             index -= 1;
         }
@@ -134,13 +131,14 @@ impl PcteTreeNode {
             .unwrap()
         });
         for child in children {
-            if let Some(new_index) = child.delete_internal(nodes, right_origin_tree, index) {
-                index = new_index;
-            } else {
-                return None;
+            match child.node_at_index(nodes, right_origin_tree, index) {
+                Ok(ok) => return Ok(ok),
+                Err(new_index) => {
+                    index = new_index;
+                }
             }
         }
-        Some(index)
+        Err(index)
     }
 
     /// Returns `Ok(node)` if node is found and `Err(new_index)` if node is not found.
