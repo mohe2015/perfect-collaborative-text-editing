@@ -43,7 +43,7 @@ pub trait History<T> {
 
     fn add_value(&mut self, value: T);
 
-    fn new_for_other(&mut self, other: &mut Self) -> Vec<Self::Item>;
+    fn new_for_other(&self, other: &Self) -> Vec<Self::Item>;
 }
 
 // https://en.wikipedia.org/wiki/Topological_sorting
@@ -90,9 +90,10 @@ impl<T> History<T> for DAGHistory<T> {
         self.history.push(entry);
     }
 
-    fn new_for_other(&mut self, other: &mut Self) -> Vec<Self::Item> {
+    fn new_for_other(&self, other: &Self) -> Vec<Self::Item> {
         let mut result = Vec::new();
         let mut visited_nodes = HashSet::new();
+        visited_nodes.extend(other.heads.iter().cloned());
 
         for head in &self.heads {
             DAGHistory::visit(&mut result, &mut visited_nodes, head)
@@ -119,5 +120,34 @@ impl<T> DAGHistory<T> {
 
         result.push(node.clone());
         visited_nodes.insert(node.clone());
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn it_works() {
+        let mut history1 = DAGHistory::new();
+        history1.add_value("a");
+
+        let mut history2 = DAGHistory::new();
+
+        let new_for_history2 = history1.new_for_other(&history2);
+        assert_eq!(new_for_history2.len(), 1);
+
+        let new_for_history1 = history2.new_for_other(&history1);
+        assert_eq!(new_for_history1.len(), 0);
+
+        for entry in new_for_history2 {
+            history2.add_entry(entry);
+        }
+
+        let new_for_history2 = history1.new_for_other(&history2);
+        assert_eq!(new_for_history2.len(), 0);
+
+        let new_for_history1 = history2.new_for_other(&history1);
+        assert_eq!(new_for_history1.len(), 0);
     }
 }
