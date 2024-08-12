@@ -89,13 +89,14 @@ impl Pcte {
             children: Vec::new(),
         });
 
-        println!(
+        /*println!(
             "left origin: {:?}, index: {}, value: {}, right origin: {:?}",
             dbg, index, character, dbg2,
-        );
+        );*/
 
         #[cfg(debug_assertions)]
         text.insert(index, character);
+        #[cfg(debug_assertions)]
         debug_assert_eq!(self.text(), text, "{:#?}", self);
     }
 
@@ -108,15 +109,16 @@ impl Pcte {
             .node_at_index(&mut self.nodes, &mut self.right_origin_tree, index)
             .unwrap();
 
-        println!(
+        /*println!(
             "delete {} {:?}",
             index, self.nodes[node.node_handle.0].character
-        );
+        );*/
 
         self.nodes[node.node_handle.0].character = None;
 
         #[cfg(debug_assertions)]
         text.remove(index);
+        #[cfg(debug_assertions)]
         debug_assert_eq!(self.text(), text, "{:#?}", self);
     }
 
