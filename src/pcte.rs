@@ -195,52 +195,6 @@ impl PcteTreeNode {
         Err(index)
     }
 
-    /// Returns `Ok(node)` if node is found and `Err(new_index)` if node is not found.
-    pub fn node_first_node_at_index(
-        &mut self,
-        nodes: &Vec<PcteNode>,
-        mut index: usize,
-    ) -> Result<&mut PcteTreeNode, usize> {
-        if let Some(_) = nodes[self.node_handle.0].character {
-            if index == 0 {
-                return Ok(self);
-            }
-            index -= 1;
-        }
-        for child in &mut self.children {
-            match child.node_first_node_at_index(nodes, index) {
-                Ok(ok) => return Ok(ok),
-                Err(new_index) => {
-                    index = new_index;
-                }
-            };
-        }
-        Err(index)
-    }
-
-    /// Returns `Ok(node)` if node is found and `Err(new_index)` if node is not found.
-    pub fn node_last_node_at_index<'a>(
-        &'a mut self,
-        nodes: &Vec<PcteNode>,
-        mut index: usize,
-    ) -> Result<&'a mut PcteTreeNode, usize> {
-        for child in &mut self.children {
-            match child.node_last_node_at_index(nodes, index) {
-                Ok(ok) => return Ok(ok),
-                Err(new_index) => {
-                    index = new_index;
-                }
-            };
-        }
-        if let Some(_) = nodes[self.node_handle.0].character {
-            index -= 1;
-            if index == 0 {
-                return Ok(self);
-            }
-        }
-        Err(index)
-    }
-
     /// Returns `Ok(index)` if the node is found and `Err(size)` if the node is not found.
     pub fn node_last_node_and_index_including_deleted_of_node(
         &mut self,
