@@ -78,9 +78,11 @@ impl<T> History<T> for DAGHistory<T> {
         let mut result = Vec::new();
         let mut visited_nodes = HashSet::new();
 
-        for head in &mut self.heads {
+        for head in &self.heads {
             DAGHistory::visit(&mut result, &mut visited_nodes, head)
         }
+
+        // IMPORTANT: result needs to be reversed
     }
 }
 
@@ -88,10 +90,17 @@ impl<T> DAGHistory<T> {
     fn visit(
         result: &mut Vec<RcHashable<DAGHistoryEntry<T>>>,
         visited_nodes: &mut HashSet<RcHashable<DAGHistoryEntry<T>>>,
-        node: &mut RcHashable<DAGHistoryEntry<T>>,
+        node: &RcHashable<DAGHistoryEntry<T>>,
     ) {
         if visited_nodes.contains(node) {
             return;
         }
+
+        for parent in &node.0.parents {
+            Self::visit(result, visited_nodes, &parent)
+        }
+
+        result.push(node.clone());
+        visited_nodes.insert(node.clone());
     }
 }
