@@ -202,7 +202,7 @@ impl Pcte {
 
         for new_self in new_for_self {
             match &new_self.0.value {
-                Message::Insert(insert) => self.insert_remote(insert)
+                Message::Insert(insert) => self.insert_remote(insert),
                 Message::Delete(delete) => todo!(),
             }
             self.history.add_entry(new_self);
