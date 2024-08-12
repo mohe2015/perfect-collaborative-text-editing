@@ -40,6 +40,9 @@ impl Pcte {
     }
 
     pub fn insert(&mut self, index: usize, character: char) {
+        #[cfg(debug_assertions)]
+        let mut text = self.text();
+
         let node = PcteNode {
             character: Some(character),
         };
@@ -67,8 +70,6 @@ impl Pcte {
 
         let dbg2 = self.nodes[right_origin.node_handle.0].character;
 
-        // TODO FIXME this is total bullshit this needs the same code as delete etc
-
         let left_origin = if index == 0 {
             &mut self.left_origin_tree
         } else {
@@ -89,10 +90,15 @@ impl Pcte {
             dbg, index, character, dbg2,
         );
 
-        // TODO assert text order that the nodes are adjacent
+        #[cfg(debug_assertions)]
+        text.insert(index, character);
+        debug_assert_eq!(self.text(), text, "{:#?}", self);
     }
 
     pub fn delete(&mut self, index: usize) {
+        #[cfg(debug_assertions)]
+        let mut text = self.text();
+
         let node = self
             .left_origin_tree
             .node_at_index(&mut self.nodes, &mut self.right_origin_tree, index)
@@ -104,6 +110,10 @@ impl Pcte {
         );
 
         self.nodes[node.node_handle.0].character = None;
+
+        #[cfg(debug_assertions)]
+        text.remove(index);
+        debug_assert_eq!(self.text(), text, "{:#?}", self);
     }
 
     pub fn text(&mut self) -> String {
