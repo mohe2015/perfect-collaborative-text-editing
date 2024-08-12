@@ -154,6 +154,16 @@ impl Pcte {
         debug_assert_eq!(self.text(), text, "{:#?}", self);
     }
 
+    fn insert_remote(&mut self, insert: &InsertMessage) {
+        let node = PcteNode {
+            character: Some(insert.character),
+            replica_id: insert.replica_id.clone(),
+            counter: insert.counter,
+        };
+
+        todo!("index from replica id and counter to the node");
+    }
+
     pub fn delete(&mut self, index: usize) {
         #[cfg(debug_assertions)]
         let mut text = self.text();
@@ -192,9 +202,7 @@ impl Pcte {
 
         for new_self in new_for_self {
             match &new_self.0.value {
-                Message::Insert(insert) => {
-                    todo!()
-                }
+                Message::Insert(insert) => self.insert_remote(insert)
                 Message::Delete(delete) => todo!(),
             }
             self.history.add_entry(new_self);
