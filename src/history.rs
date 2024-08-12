@@ -1,6 +1,8 @@
 use std::hash::Hash;
 use std::{collections::HashSet, hash::Hasher, rc::Rc};
 
+// TODO FIXME switch to handle based indexing and store elements in parent container
+
 /// Allows hashing a `Rc<T>` value by its address and not its contents.
 /// This struct additionally allows cloning and comparing equality
 /// by pointer reference.
@@ -33,11 +35,13 @@ impl<T> RcHashable<T> {
 }
 
 pub trait History<T> {
+    type Item;
+
     fn new() -> Self;
 
     fn add_entry(&mut self, entry: T);
 
-    fn synchronize(&mut self, other: &mut Self);
+    fn new_for_other(&mut self, other: &mut Self) -> Vec<Self::Item>;
 }
 
 // https://en.wikipedia.org/wiki/Topological_sorting
@@ -58,6 +62,8 @@ pub struct DAGHistory<T> {
 }
 
 impl<T> History<T> for DAGHistory<T> {
+    type Item = RcHashable<DAGHistoryEntry<T>>;
+
     fn new() -> Self {
         Self {
             heads: Vec::new(),
@@ -74,7 +80,7 @@ impl<T> History<T> for DAGHistory<T> {
         self.heads.push(entry);
     }
 
-    fn synchronize(&mut self, other: &mut Self) {
+    fn new_for_other(&mut self, other: &mut Self) -> Vec<Self::Item> {
         let mut result = Vec::new();
         let mut visited_nodes = HashSet::new();
 
@@ -82,7 +88,8 @@ impl<T> History<T> for DAGHistory<T> {
             DAGHistory::visit(&mut result, &mut visited_nodes, head)
         }
 
-        // IMPORTANT: result needs to be reversed
+        result.reverse();
+        result
     }
 }
 
