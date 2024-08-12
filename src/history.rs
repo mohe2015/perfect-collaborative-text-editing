@@ -56,14 +56,14 @@ pub trait History<T> {
 
 #[derive(Debug)]
 pub struct DAGHistoryEntry<T> {
-    value: T,
-    parents: HashSet<RcHashable<DAGHistoryEntry<T>>>,
+    pub value: T,
+    pub parents: HashSet<RcHashable<DAGHistoryEntry<T>>>,
 }
 
 #[derive(Debug)]
 pub struct DAGHistory<T> {
-    heads: HashSet<RcHashable<DAGHistoryEntry<T>>>,
-    history: Vec<RcHashable<DAGHistoryEntry<T>>>,
+    pub heads: HashSet<RcHashable<DAGHistoryEntry<T>>>,
+    pub history: Vec<RcHashable<DAGHistoryEntry<T>>>,
 }
 
 impl<T> History<T> for DAGHistory<T> {

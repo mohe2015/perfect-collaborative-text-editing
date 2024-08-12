@@ -186,8 +186,24 @@ impl Pcte {
             .text_tree_node(&self.nodes, &mut self.right_origin_tree)
     }
 
-    // TODO FIXME highly inefficient
-    pub fn synchronize(history: Vec<Message>) {}
+    pub fn synchronize(&mut self, other: &mut Self) {
+        let new_for_self = other.history.new_for_other(&self.history);
+        let new_for_other = self.history.new_for_other(&other.history);
+
+        for new_self in new_for_self {
+            match &new_self.0.value {
+                Message::Insert(insert) => {
+                    todo!()
+                }
+                Message::Delete(delete) => todo!(),
+            }
+            self.history.add_entry(new_self);
+        }
+
+        for new_other in new_for_other {
+            other.history.add_entry(new_other);
+        }
+    }
 }
 
 impl PcteTreeNode {
