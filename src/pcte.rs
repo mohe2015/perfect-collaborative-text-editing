@@ -1,9 +1,23 @@
 // runtime borrow checking or handles or raw pointers
 
-use std::ptr;
+use std::{ptr, rc::Rc};
+
+#[derive(Debug)]
+pub struct Message {
+    pub left_replica_id: Rc<String>,
+    pub left_counter: usize,
+    pub right_replica_id: Rc<String>,
+    pub right_counter: usize,
+    pub replica_id: Rc<String>,
+    pub counter: usize,
+    pub character: Option<char>,
+}
 
 #[derive(Debug)]
 pub struct Pcte {
+    pub replica_id: Rc<String>,
+    pub counter: usize,
+    pub history: Vec<Message>,
     pub nodes: Vec<PcteNode>,
     pub left_origin_tree: PcteTreeNode,
     pub right_origin_tree: PcteTreeNode,
@@ -11,6 +25,8 @@ pub struct Pcte {
 
 #[derive(Debug, Clone)]
 pub struct PcteNode {
+    pub replica_id: Rc<String>,
+    pub counter: usize,
     pub character: Option<char>,
 }
 
@@ -24,9 +40,16 @@ pub struct PcteTreeNode {
 }
 
 impl Pcte {
-    pub fn new() -> Self {
-        let nodes = vec![PcteNode { character: None }];
+    pub fn new(replica_id: Rc<String>) -> Self {
+        let nodes = vec![PcteNode {
+            character: None,
+            replica_id: Rc::new(String::new()),
+            counter: 0,
+        }];
         Self {
+            replica_id,
+            counter: 0,
+            history: Vec::new(),
             nodes,
             left_origin_tree: PcteTreeNode {
                 node_handle: PcteNodeHandle(0),
@@ -43,8 +66,12 @@ impl Pcte {
         #[cfg(debug_assertions)]
         let mut text = self.text();
 
+        self.counter += 1;
+
         let node = PcteNode {
             character: Some(character),
+            replica_id: self.replica_id.clone(),
+            counter: self.counter,
         };
         let node_handle = PcteNodeHandle(self.nodes.len());
         self.nodes.push(node);
@@ -224,7 +251,7 @@ mod tests {
 
     #[test]
     fn it_works() {
-        let mut pcte = Pcte::new();
+        let mut pcte = Pcte::new(Rc::new("a".to_string()));
         pcte.insert(0, 'h');
         pcte.insert(1, 'e');
         pcte.insert(2, 'l');
@@ -237,7 +264,7 @@ mod tests {
 
     #[test]
     fn it_works2() {
-        let mut pcte = Pcte::new();
+        let mut pcte = Pcte::new(Rc::new("a".to_string()));
         pcte.insert(0, 'h');
         pcte.delete(0);
         let text = pcte.text();
@@ -247,7 +274,7 @@ mod tests {
 
     #[test]
     fn it_works3() {
-        let mut pcte = Pcte::new();
+        let mut pcte = Pcte::new(Rc::new("a".to_string()));
         pcte.insert(0, 'o');
         pcte.insert(0, 'l');
         println!("{:#?}", pcte);
