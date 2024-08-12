@@ -1,0 +1,58 @@
+name: Rust
+
+on:
+  push:
+    branches: [ "main" ]
+  pull_request:
+    branches: [ "main" ]
+
+env:
+  CARGO_TERM_COLOR: always
+  RUSTFLAGS: -Zpolonius
+  RUST_BACKTRACE: 1
+
+jobs:
+  build:
+
+    runs-on: ubuntu-24.04
+
+    steps:
+    - uses: actions/cache@v3
+      with:
+        path: |
+          ~/.cargo/bin/
+          ~/.cargo/registry/index/
+          ~/.cargo/registry/cache/
+          ~/.cargo/git/db/
+          target/
+        key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
+    - uses: actions/checkout@v4
+    - run: rustup default nightly
+    - name: Build
+      run: cargo build --verbose
+    - name: Run tests
+      run: cargo test --verbose
+  fuzz:
+
+    runs-on: ubuntu-24.04
+
+    steps:
+    - uses: actions/cache@v3
+      with:
+        path: |
+          ~/.cargo/bin/
+          ~/.cargo/registry/index/
+          ~/.cargo/registry/cache/
+          ~/.cargo/git/db/
+          target/
+        key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
+    - uses: actions/checkout@v4
+    - run: rustup default nightly
+    - name: Install cargo-fuzz
+      run: cargo install cargo-fuzz
+    - name: Fuzzing
+      run: cargo fuzz run --jobs 4 fuzz_target_1 -- -max_total_time=60
+    #- name: Measure fuzzing coverage
+    #  run: cargo fuzz coverage fuzz_target_1
+    #- name: Output fuzzing coverage
+    #  run: ~/.rustup/toolchains/nightly-x86_64-unknown-linux-gnu/lib/rustlib/x86_64-unknown-linux-gnu/bin/llvm-cov show target/x86_64-unknown-linux-gnu/coverage/x86_64-unknown-linux-gnu/release/fuzz_target_1 --format=html --output-dir=target/cov --ignore-filename-regex=.cargo/registry/src -instr-profile=fuzz/coverage/fuzz_target_1/coverage.profdata
