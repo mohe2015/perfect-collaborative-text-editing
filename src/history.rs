@@ -39,7 +39,9 @@ pub trait History<T> {
 
     fn new() -> Self;
 
-    fn add_entry(&mut self, entry: T);
+    fn add_entry(&mut self, entry: Self::Item);
+
+    fn add_value(&mut self, value: T);
 
     fn new_for_other(&mut self, other: &mut Self) -> Vec<Self::Item>;
 }
@@ -53,11 +55,11 @@ pub trait History<T> {
 
 pub struct DAGHistoryEntry<T> {
     value: T,
-    parents: Vec<RcHashable<DAGHistoryEntry<T>>>,
+    parents: HashSet<RcHashable<DAGHistoryEntry<T>>>,
 }
 
 pub struct DAGHistory<T> {
-    heads: Vec<RcHashable<DAGHistoryEntry<T>>>,
+    heads: HashSet<RcHashable<DAGHistoryEntry<T>>>,
     history: Vec<RcHashable<DAGHistoryEntry<T>>>,
 }
 
@@ -66,18 +68,26 @@ impl<T> History<T> for DAGHistory<T> {
 
     fn new() -> Self {
         Self {
-            heads: Vec::new(),
+            heads: HashSet::new(),
             history: Vec::new(),
         }
     }
 
-    fn add_entry(&mut self, entry: T) {
+    fn add_value(&mut self, value: T) {
         let heads = std::mem::take(&mut self.heads);
         let entry = RcHashable::new(DAGHistoryEntry {
-            value: entry,
+            value: value,
             parents: heads,
         });
-        self.heads.push(entry);
+        self.heads.insert(entry);
+    }
+
+    fn add_entry(&mut self, entry: Self::Item) {
+        for parent in &entry.0.parents {
+            self.heads.remove(parent);
+        }
+        self.heads.insert(entry.clone());
+        self.history.push(entry);
     }
 
     fn new_for_other(&mut self, other: &mut Self) -> Vec<Self::Item> {
