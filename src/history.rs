@@ -21,17 +21,25 @@ pub struct DAGHistoryEntry<T> {
 }
 
 pub struct DAGHistory<T> {
-    heads: Vec<DAGHistoryEntry<T>>,
-    history: Vec<DAGHistoryEntry<T>>,
+    heads: Vec<Rc<DAGHistoryEntry<T>>>,
+    history: Vec<Rc<DAGHistoryEntry<T>>>,
 }
 
 impl<T> History<T> for DAGHistory<T> {
     fn new() -> Self {
-        todo!()
+        Self {
+            heads: Vec::new(),
+            history: Vec::new(),
+        }
     }
 
     fn add_entry(&mut self, entry: T) {
-        todo!()
+        let heads = std::mem::take(&mut self.heads);
+        let entry = Rc::new(DAGHistoryEntry {
+            value: entry,
+            parents: heads,
+        });
+        self.heads.push(entry);
     }
 
     fn synchronize(&mut self, other: &mut Self) {
