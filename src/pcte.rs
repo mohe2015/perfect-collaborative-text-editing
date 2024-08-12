@@ -3,14 +3,26 @@
 use std::{ptr, rc::Rc};
 
 #[derive(Debug)]
-pub struct Message {
+pub enum Message {
+    Insert(InsertMessage),
+    Delete(DeleteMessage),
+}
+
+#[derive(Debug)]
+pub struct InsertMessage {
     pub left_replica_id: Rc<String>,
     pub left_counter: usize,
     pub right_replica_id: Rc<String>,
     pub right_counter: usize,
     pub replica_id: Rc<String>,
     pub counter: usize,
-    pub character: Option<char>,
+    pub character: char,
+}
+
+#[derive(Debug)]
+pub struct DeleteMessage {
+    pub replica_id: Rc<String>,
+    pub counter: usize,
 }
 
 #[derive(Debug)]
@@ -99,6 +111,9 @@ impl Pcte {
             children: Vec::new(),
         });
 
+        let right_replica_id = self.nodes[right_origin.node_handle.0].replica_id.clone();
+        let right_counter = self.nodes[right_origin.node_handle.0].counter;
+
         let dbg2 = self.nodes[right_origin.node_handle.0].character;
 
         let left_origin = if index == 0 {
@@ -115,6 +130,16 @@ impl Pcte {
             node_handle,
             children: Vec::new(),
         });
+
+        self.history.push(Message::Insert(InsertMessage {
+            left_replica_id: self.nodes[left_origin.node_handle.0].replica_id.clone(),
+            left_counter: self.nodes[left_origin.node_handle.0].counter,
+            right_replica_id,
+            right_counter,
+            replica_id: self.replica_id.clone(),
+            counter: self.counter,
+            character: character,
+        }));
 
         /*println!(
             "left origin: {:?}, index: {}, value: {}, right origin: {:?}",
@@ -141,6 +166,11 @@ impl Pcte {
             index, self.nodes[node.node_handle.0].character
         );*/
 
+        self.history.push(Message::Delete(DeleteMessage {
+            replica_id: self.nodes[node.node_handle.0].replica_id.clone(),
+            counter: self.nodes[node.node_handle.0].counter,
+        }));
+
         self.nodes[node.node_handle.0].character = None;
 
         #[cfg(debug_assertions)]
@@ -153,6 +183,9 @@ impl Pcte {
         self.left_origin_tree
             .text_tree_node(&self.nodes, &mut self.right_origin_tree)
     }
+
+    // TODO FIXME highly inefficient
+    pub fn synchronize(history: Vec<Message>) {}
 }
 
 impl PcteTreeNode {
