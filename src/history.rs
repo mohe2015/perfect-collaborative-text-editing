@@ -6,6 +6,7 @@ use std::{collections::HashSet, hash::Hasher, rc::Rc};
 /// Allows hashing a `Rc<T>` value by its address and not its contents.
 /// This struct additionally allows cloning and comparing equality
 /// by pointer reference.
+#[derive(Debug)]
 pub struct RcHashable<T>(pub Rc<T>);
 
 impl<T> Hash for RcHashable<T> {
@@ -53,11 +54,13 @@ pub trait History<T> {
 
 // starting from the heads to are depth traversal or so and break if you find a remote head?
 
+#[derive(Debug)]
 pub struct DAGHistoryEntry<T> {
     value: T,
     parents: HashSet<RcHashable<DAGHistoryEntry<T>>>,
 }
 
+#[derive(Debug)]
 pub struct DAGHistory<T> {
     heads: HashSet<RcHashable<DAGHistoryEntry<T>>>,
     history: Vec<RcHashable<DAGHistoryEntry<T>>>,

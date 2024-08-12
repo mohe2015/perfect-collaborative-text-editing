@@ -2,6 +2,8 @@
 
 use std::{ptr, rc::Rc};
 
+use crate::history::{DAGHistory, History};
+
 #[derive(Debug)]
 pub enum Message {
     Insert(InsertMessage),
@@ -29,7 +31,7 @@ pub struct DeleteMessage {
 pub struct Pcte {
     pub replica_id: Rc<String>,
     pub counter: usize,
-    pub history: Vec<Message>,
+    pub history: DAGHistory<Message>,
     pub nodes: Vec<PcteNode>,
     pub left_origin_tree: PcteTreeNode,
     pub right_origin_tree: PcteTreeNode,
@@ -61,7 +63,7 @@ impl Pcte {
         Self {
             replica_id,
             counter: 0,
-            history: Vec::new(),
+            history: DAGHistory::new(),
             nodes,
             left_origin_tree: PcteTreeNode {
                 node_handle: PcteNodeHandle(0),
@@ -131,7 +133,7 @@ impl Pcte {
             children: Vec::new(),
         });
 
-        self.history.push(Message::Insert(InsertMessage {
+        self.history.add_value(Message::Insert(InsertMessage {
             left_replica_id: self.nodes[left_origin.node_handle.0].replica_id.clone(),
             left_counter: self.nodes[left_origin.node_handle.0].counter,
             right_replica_id,
@@ -166,7 +168,7 @@ impl Pcte {
             index, self.nodes[node.node_handle.0].character
         );*/
 
-        self.history.push(Message::Delete(DeleteMessage {
+        self.history.add_value(Message::Delete(DeleteMessage {
             replica_id: self.nodes[node.node_handle.0].replica_id.clone(),
             counter: self.nodes[node.node_handle.0].counter,
         }));
