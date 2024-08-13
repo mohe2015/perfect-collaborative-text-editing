@@ -134,16 +134,12 @@ impl Pcte {
             .clone();
         let right_counter = self.nodes[self.tree_nodes[right_origin].node_handle].counter;
 
-        let dbg2 = self.nodes[self.tree_nodes[right_origin].node_handle].character;
-
         let left_origin = if index == 0 {
             self.left_origin_tree
         } else {
             self.node_at_index(self.left_origin_tree, index - 1)
                 .unwrap()
         };
-
-        let dbg = self.nodes[self.tree_nodes[left_origin].node_handle].character;
 
         let handle = self.tree_nodes.push(PcteTreeNode {
             node_handle,
@@ -180,8 +176,40 @@ impl Pcte {
             replica_id: insert.replica_id.clone(),
             counter: insert.counter,
         };
+        let node_handle = self.nodes.push(node);
 
-        todo!("index from replica id and counter to the node");
+        let (left_origin, _) = self
+            .id_to_node
+            .get(&(insert.left_replica_id.clone(), insert.left_counter))
+            .unwrap();
+
+        let (_, right_origin) = self
+            .id_to_node
+            .get(&(insert.right_replica_id.clone(), insert.right_counter))
+            .unwrap();
+
+        let left_tree_node_handle = self.tree_nodes.push(PcteTreeNode {
+            node_handle,
+            children: Vec::new(),
+        });
+        let right_tree_node_handle = self.tree_nodes.push(PcteTreeNode {
+            node_handle,
+            children: Vec::new(),
+        });
+
+        self.tree_nodes[left_origin]
+            .children
+            .push(left_tree_node_handle);
+        self.tree_nodes[right_origin]
+            .children
+            .push(right_tree_node_handle);
+
+        self.id_to_node.insert(
+            (insert.replica_id.clone(), insert.counter),
+            (left_tree_node_handle, right_tree_node_handle),
+        );
+
+        // TODO calculate position at which it was inserted
     }
 
     pub fn delete(&mut self, index: usize) {

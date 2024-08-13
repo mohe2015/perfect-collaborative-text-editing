@@ -52,3 +52,17 @@ impl<T> IndexMut<Handle<T>> for HandleVec<T> {
         &mut self.0[handle.0]
     }
 }
+
+impl<T> Index<&Handle<T>> for HandleVec<T> {
+    type Output = T;
+
+    fn index(&self, handle: &Handle<T>) -> &T {
+        &self.0[handle.0]
+    }
+}
+
+impl<T> IndexMut<&Handle<T>> for HandleVec<T> {
+    fn index_mut(&mut self, handle: &Handle<T>) -> &mut Self::Output {
+        &mut self.0[handle.0]
+    }
+}
