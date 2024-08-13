@@ -284,16 +284,22 @@ impl Pcte {
         }
         let mut children: Vec<_> = self.tree_nodes[this].children.clone();
         children.sort_by_cached_key(|element| {
-            -isize::try_from(
-                self.node_last_node_and_index_including_deleted_of_node(
-                    self.right_origin_tree,
-                    self.tree_nodes[*element].node_handle,
-                    0,
+            (
+                -isize::try_from(
+                    self.node_last_node_and_index_including_deleted_of_node(
+                        self.right_origin_tree,
+                        self.tree_nodes[*element].node_handle,
+                        0,
+                    )
+                    .unwrap()
+                    .1,
                 )
-                .unwrap()
-                .1,
+                .unwrap(),
+                self.nodes[self.tree_nodes[element].node_handle]
+                    .replica_id
+                    .clone(),
+                self.nodes[self.tree_nodes[element].node_handle].counter,
             )
-            .unwrap()
         });
         for child in children {
             result.push_str(&self.text_tree_node(child))
@@ -314,16 +320,22 @@ impl Pcte {
         }
         let mut children: Vec<_> = self.tree_nodes[node].children.clone();
         children.sort_by_cached_key(|element| {
-            -isize::try_from(
-                self.node_last_node_and_index_including_deleted_of_node(
-                    self.right_origin_tree,
-                    self.tree_nodes[*element].node_handle,
-                    0,
+            (
+                -isize::try_from(
+                    self.node_last_node_and_index_including_deleted_of_node(
+                        self.right_origin_tree,
+                        self.tree_nodes[*element].node_handle,
+                        0,
+                    )
+                    .unwrap()
+                    .1,
                 )
-                .unwrap()
-                .1,
+                .unwrap(),
+                self.nodes[self.tree_nodes[element].node_handle]
+                    .replica_id
+                    .clone(),
+                self.nodes[self.tree_nodes[element].node_handle].counter,
             )
-            .unwrap()
         });
         for child in children {
             match self.node_at_index(child, index) {
@@ -347,6 +359,12 @@ impl Pcte {
             return Ok((this, index));
         }
         index += 1;
+        for child in &self.tree_nodes[this].children {
+            // chldren at the same place need to return the same value
+            if self.tree_nodes[child].node_handle == node {
+                return Ok((*child, index));
+            }
+        }
         for child in &self.tree_nodes[this].children {
             match self.node_last_node_and_index_including_deleted_of_node(*child, node, index) {
                 ok @ Ok(_) => return ok,
@@ -407,7 +425,7 @@ mod tests {
         assert_eq!(pcte_a.text(), "a");
         assert_eq!(pcte_b.text(), "b");
         pcte_a.synchronize(&mut pcte_b);
-        assert_eq!(pcte_a.text(), "ba");
-        assert_eq!(pcte_b.text(), "ba");
+        assert_eq!(pcte_a.text(), "ab", "{:#?}", pcte_a);
+        assert_eq!(pcte_b.text(), "ab");
     }
 }
