@@ -238,6 +238,20 @@ impl Pcte {
         debug_assert_eq!(self.text(), text, "{:#?}", self);
     }
 
+    fn delete_remote(&mut self, delete: &DeleteMessage) {
+        let (left_origin, right_origin) = self
+            .id_to_node
+            .get(&(delete.replica_id.clone(), delete.counter))
+            .unwrap();
+
+        debug_assert_eq!(
+            self.tree_nodes[left_origin].node_handle,
+            self.tree_nodes[right_origin].node_handle
+        );
+
+        self.nodes[self.tree_nodes[left_origin].node_handle].character = None;
+    }
+
     pub fn text(&mut self) -> String {
         self.text_tree_node(self.left_origin_tree)
     }
@@ -249,12 +263,16 @@ impl Pcte {
         for new_self in new_for_self {
             match &new_self.0.value {
                 Message::Insert(insert) => self.insert_remote(insert),
-                Message::Delete(delete) => todo!(),
+                Message::Delete(delete) => self.delete_remote(delete),
             }
             self.history.add_entry(new_self);
         }
 
         for new_other in new_for_other {
+            match &new_other.0.value {
+                Message::Insert(insert) => other.insert_remote(insert),
+                Message::Delete(delete) => other.delete_remote(delete),
+            }
             other.history.add_entry(new_other);
         }
     }
@@ -378,5 +396,18 @@ mod tests {
         pcte.delete(0);
         let text = pcte.text();
         assert_eq!(text, "o");
+    }
+
+    #[test]
+    fn it_works4() {
+        let mut pcte_a = Pcte::new(Rc::new("a".to_string()));
+        let mut pcte_b = Pcte::new(Rc::new("b".to_string()));
+        pcte_a.insert(0, 'a');
+        pcte_b.insert(0, 'b');
+        assert_eq!(pcte_a.text(), "a");
+        assert_eq!(pcte_b.text(), "b");
+        pcte_a.synchronize(&mut pcte_b);
+        assert_eq!(pcte_a.text(), "ba");
+        assert_eq!(pcte_b.text(), "ba");
     }
 }
