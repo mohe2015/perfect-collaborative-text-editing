@@ -1,5 +1,7 @@
 #![no_main]
 
+use std::rc::Rc;
+
 use libfuzzer_sys::fuzz_target;
 use perfect_collaborative_text_editing::pcte::Pcte;
 
@@ -58,7 +60,7 @@ impl<'a> arbitrary::Arbitrary<'a> for FixtureOperations {
 }
 
 fuzz_target!(|data: FixtureOperations| {
-    let mut pcte = Pcte::new();
+    let mut pcte = Pcte::new(Rc::new("a".to_string()));
     let mut string = String::new();
     for operation in data.operations {
         match operation {
