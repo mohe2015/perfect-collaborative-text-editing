@@ -120,10 +120,14 @@ impl Pcte {
             Err(_) => self.right_origin_tree,
         };
 
-        self.tree_nodes[right_origin.0].children.push(PcteTreeNode {
+        let index = self.tree_nodes.len();
+        self.tree_nodes.push(PcteTreeNode {
             node_handle,
             children: Vec::new(),
         });
+        self.tree_nodes[right_origin.0]
+            .children
+            .push(PcteTreeNodeHandle(index));
 
         let right_replica_id = self.nodes[self.tree_nodes[right_origin.0].node_handle.0]
             .replica_id
@@ -141,10 +145,14 @@ impl Pcte {
 
         let dbg = self.nodes[self.tree_nodes[left_origin.0].node_handle.0].character;
 
-        self.tree_nodes[left_origin.0].children.push(PcteTreeNode {
+        let index = self.tree_nodes.len();
+        self.tree_nodes.push(PcteTreeNode {
             node_handle,
             children: Vec::new(),
         });
+        self.tree_nodes[left_origin.0]
+            .children
+            .push(PcteTreeNodeHandle(index));
 
         self.history.add_value(Message::Insert(InsertMessage {
             left_replica_id: self.nodes[self.tree_nodes[left_origin.0].node_handle.0]
