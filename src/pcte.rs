@@ -1,8 +1,66 @@
 // runtime borrow checking or handles or raw pointers
-
-use std::{collections::HashMap, hash::Hash, ptr, rc::Rc};
+use std::fmt::Debug;
+use std::{
+    collections::HashMap,
+    hash::Hash,
+    marker::PhantomData,
+    ops::{Index, IndexMut},
+    ptr,
+    rc::Rc,
+};
 
 use crate::history::{DAGHistory, History};
+
+#[derive(Debug)]
+pub struct HandleVec<T>(Vec<T>);
+
+impl<T> HandleVec<T> {
+    pub fn new() -> Self {
+        HandleVec(Vec::new())
+    }
+
+    pub fn push(&mut self, value: T) -> Handle<T> {
+        let handle = self.0.len();
+        self.0.push(value);
+        Handle(handle, PhantomData)
+    }
+}
+
+pub struct Handle<T>(usize, PhantomData<T>);
+
+impl<T> Debug for Handle<T> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_tuple("Handle").field(&self.0).finish()
+    }
+}
+
+impl<T> PartialEq for Handle<T> {
+    fn eq(&self, other: &Self) -> bool {
+        self.0 == other.0 && self.1 == other.1
+    }
+}
+
+impl<T> Clone for Handle<T> {
+    fn clone(&self) -> Self {
+        Self(self.0.clone(), self.1.clone())
+    }
+}
+
+impl<T> Copy for Handle<T> {}
+
+impl<T> Index<Handle<T>> for HandleVec<T> {
+    type Output = T;
+
+    fn index(&self, handle: Handle<T>) -> &T {
+        &self.0[handle.0]
+    }
+}
+
+impl<T> IndexMut<Handle<T>> for HandleVec<T> {
+    fn index_mut(&mut self, handle: Handle<T>) -> &mut Self::Output {
+        &mut self.0[handle.0]
+    }
+}
 
 #[derive(Debug)]
 pub enum Message {
@@ -32,11 +90,11 @@ pub struct Pcte {
     pub replica_id: Rc<String>,
     pub counter: usize,
     pub history: DAGHistory<Message>,
-    pub nodes: Vec<PcteNode>,
-    pub tree_nodes: Vec<PcteTreeNode>,
-    pub id_to_node: HashMap<(Rc<String>, usize), (PcteTreeNodeHandle, PcteTreeNodeHandle)>,
-    pub left_origin_tree: PcteTreeNodeHandle,
-    pub right_origin_tree: PcteTreeNodeHandle,
+    pub nodes: HandleVec<PcteNode>,
+    pub tree_nodes: HandleVec<PcteTreeNode>,
+    pub id_to_node: HashMap<(Rc<String>, usize), (Handle<PcteTreeNode>, Handle<PcteTreeNode>)>,
+    pub left_origin_tree: Handle<PcteTreeNode>,
+    pub right_origin_tree: Handle<PcteTreeNode>,
 }
 
 #[derive(Debug, Clone)]
@@ -47,37 +105,33 @@ pub struct PcteNode {
 }
 
 /// we need a handle here because the left and right tree both reference the same object
-#[derive(Debug, Clone, Copy, PartialEq)]
-pub struct PcteNodeHandle(usize);
 
 /// we need a handle here because our map and the tree reference the same tree nodes
-#[derive(Debug, Clone, Copy, PartialEq)]
-pub struct PcteTreeNodeHandle(usize);
 
 #[derive(Debug)]
 pub struct PcteTreeNode {
-    pub node_handle: PcteNodeHandle,
-    pub children: Vec<PcteTreeNodeHandle>,
+    pub node_handle: Handle<PcteNode>,
+    pub children: Vec<Handle<PcteTreeNode>>,
 }
 
 impl Pcte {
     pub fn new(replica_id: Rc<String>) -> Self {
         let root_replica_id = Rc::new(String::new());
-        let nodes = vec![PcteNode {
+        let mut nodes = HandleVec::new();
+        let handle = nodes.push(PcteNode {
             character: None,
             replica_id: root_replica_id.clone(),
             counter: 0,
-        }];
-        let tree_nodes = vec![
-            PcteTreeNode {
-                node_handle: PcteNodeHandle(0),
-                children: Vec::new(),
-            },
-            PcteTreeNode {
-                node_handle: PcteNodeHandle(0),
-                children: Vec::new(),
-            },
-        ];
+        });
+        let mut tree_nodes = HandleVec::new();
+        let left_origin_tree = tree_nodes.push(PcteTreeNode {
+            node_handle: handle,
+            children: Vec::new(),
+        });
+        let right_origin_tree = tree_nodes.push(PcteTreeNode {
+            node_handle: handle,
+            children: Vec::new(),
+        });
         Self {
             replica_id,
             counter: 0,
@@ -86,10 +140,10 @@ impl Pcte {
             tree_nodes,
             id_to_node: HashMap::from([(
                 (root_replica_id, 0),
-                (PcteTreeNodeHandle(0), PcteTreeNodeHandle(1)),
+                (left_origin_tree, right_origin_tree),
             )]),
-            left_origin_tree: PcteTreeNodeHandle(0),
-            right_origin_tree: PcteTreeNodeHandle(1),
+            left_origin_tree,
+            right_origin_tree,
         }
     }
 
@@ -104,14 +158,13 @@ impl Pcte {
             replica_id: self.replica_id.clone(),
             counter: self.counter,
         };
-        let node_handle = PcteNodeHandle(self.nodes.len());
-        self.nodes.push(node);
+        let node_handle = self.nodes.push(node);
 
         let right_origin = match self.node_at_index(self.left_origin_tree, index) {
             Ok(v) => {
                 self.node_last_node_and_index_including_deleted_of_node(
                     self.right_origin_tree,
-                    self.tree_nodes[v.0].node_handle,
+                    self.tree_nodes[v].node_handle,
                     0,
                 )
                 .unwrap()
@@ -120,21 +173,18 @@ impl Pcte {
             Err(_) => self.right_origin_tree,
         };
 
-        let index = self.tree_nodes.len();
-        self.tree_nodes.push(PcteTreeNode {
+        let handle = self.tree_nodes.push(PcteTreeNode {
             node_handle,
             children: Vec::new(),
         });
-        self.tree_nodes[right_origin.0]
-            .children
-            .push(PcteTreeNodeHandle(index));
+        self.tree_nodes[right_origin].children.push(handle);
 
-        let right_replica_id = self.nodes[self.tree_nodes[right_origin.0].node_handle.0]
+        let right_replica_id = self.nodes[self.tree_nodes[right_origin].node_handle]
             .replica_id
             .clone();
-        let right_counter = self.nodes[self.tree_nodes[right_origin.0].node_handle.0].counter;
+        let right_counter = self.nodes[self.tree_nodes[right_origin].node_handle].counter;
 
-        let dbg2 = self.nodes[self.tree_nodes[right_origin.0].node_handle.0].character;
+        let dbg2 = self.nodes[self.tree_nodes[right_origin].node_handle].character;
 
         let left_origin = if index == 0 {
             self.left_origin_tree
@@ -143,22 +193,19 @@ impl Pcte {
                 .unwrap()
         };
 
-        let dbg = self.nodes[self.tree_nodes[left_origin.0].node_handle.0].character;
+        let dbg = self.nodes[self.tree_nodes[left_origin].node_handle].character;
 
-        let index = self.tree_nodes.len();
-        self.tree_nodes.push(PcteTreeNode {
+        let handle = self.tree_nodes.push(PcteTreeNode {
             node_handle,
             children: Vec::new(),
         });
-        self.tree_nodes[left_origin.0]
-            .children
-            .push(PcteTreeNodeHandle(index));
+        self.tree_nodes[left_origin].children.push(handle);
 
         self.history.add_value(Message::Insert(InsertMessage {
-            left_replica_id: self.nodes[self.tree_nodes[left_origin.0].node_handle.0]
+            left_replica_id: self.nodes[self.tree_nodes[left_origin].node_handle]
                 .replica_id
                 .clone(),
-            left_counter: self.nodes[self.tree_nodes[left_origin.0].node_handle.0].counter,
+            left_counter: self.nodes[self.tree_nodes[left_origin].node_handle].counter,
             right_replica_id,
             right_counter,
             replica_id: self.replica_id.clone(),
@@ -199,13 +246,13 @@ impl Pcte {
         );*/
 
         self.history.add_value(Message::Delete(DeleteMessage {
-            replica_id: self.nodes[self.tree_nodes[node.0].node_handle.0]
+            replica_id: self.nodes[self.tree_nodes[node].node_handle]
                 .replica_id
                 .clone(),
-            counter: self.nodes[self.tree_nodes[node.0].node_handle.0].counter,
+            counter: self.nodes[self.tree_nodes[node].node_handle].counter,
         }));
 
-        self.nodes[self.tree_nodes[node.0].node_handle.0].character = None;
+        self.nodes[self.tree_nodes[node].node_handle].character = None;
 
         #[cfg(debug_assertions)]
         text.remove(index);
@@ -234,17 +281,17 @@ impl Pcte {
         }
     }
 
-    fn text_tree_node(&self, this: PcteTreeNodeHandle) -> String {
+    fn text_tree_node(&self, this: Handle<PcteTreeNode>) -> String {
         let mut result = String::new();
-        if let Some(character) = self.nodes[self.tree_nodes[this.0].node_handle.0].character {
+        if let Some(character) = self.nodes[self.tree_nodes[this].node_handle].character {
             result.push(character);
         }
-        let mut children: Vec<_> = self.tree_nodes[this.0].children.iter().collect();
+        let mut children: Vec<_> = self.tree_nodes[this].children.clone();
         children.sort_by_cached_key(|element| {
             -isize::try_from(
                 self.node_last_node_and_index_including_deleted_of_node(
                     self.right_origin_tree,
-                    self.tree_nodes[element.0].node_handle,
+                    self.tree_nodes[*element].node_handle,
                     0,
                 )
                 .unwrap()
@@ -253,28 +300,28 @@ impl Pcte {
             .unwrap()
         });
         for child in children {
-            result.push_str(&self.text_tree_node(*child))
+            result.push_str(&self.text_tree_node(child))
         }
         result
     }
 
     fn node_at_index(
         &mut self,
-        node: PcteTreeNodeHandle,
+        node: Handle<PcteTreeNode>,
         mut index: usize,
-    ) -> Result<PcteTreeNodeHandle, usize> {
-        if let Some(_) = self.nodes[self.tree_nodes[node.0].node_handle.0].character {
+    ) -> Result<Handle<PcteTreeNode>, usize> {
+        if let Some(_) = self.nodes[self.tree_nodes[node].node_handle].character {
             if index == 0 {
                 return Ok(node);
             }
             index -= 1;
         }
-        let mut children: Vec<_> = self.tree_nodes[node.0].children.clone();
+        let mut children: Vec<_> = self.tree_nodes[node].children.clone();
         children.sort_by_cached_key(|element| {
             -isize::try_from(
                 self.node_last_node_and_index_including_deleted_of_node(
                     self.right_origin_tree,
-                    self.tree_nodes[element.0].node_handle,
+                    self.tree_nodes[*element].node_handle,
                     0,
                 )
                 .unwrap()
@@ -296,15 +343,15 @@ impl Pcte {
     /// Returns `Ok(index)` if the node is found and `Err(size)` if the node is not found.
     pub fn node_last_node_and_index_including_deleted_of_node(
         &self,
-        this: PcteTreeNodeHandle,
-        node: PcteNodeHandle,
+        this: Handle<PcteTreeNode>,
+        node: Handle<PcteNode>,
         mut index: usize,
-    ) -> Result<(PcteTreeNodeHandle, usize), usize> {
-        if self.tree_nodes[this.0].node_handle == node {
+    ) -> Result<(Handle<PcteTreeNode>, usize), usize> {
+        if self.tree_nodes[this].node_handle == node {
             return Ok((this, index));
         }
         index += 1;
-        for child in &self.tree_nodes[this.0].children {
+        for child in &self.tree_nodes[this].children {
             match self.node_last_node_and_index_including_deleted_of_node(*child, node, index) {
                 ok @ Ok(_) => return ok,
                 Err(new_index) => {
