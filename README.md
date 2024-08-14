@@ -8,7 +8,7 @@ cargo fuzz run --jobs 8 fuzz_target_1 -- -max_total_time=60
 cargo fuzz run fuzz_target_1 fuzz/artifacts/fuzz_target_1/minimized-from-d9dd7c9f723708057abf5d76d31591615d27e224
 cargo fuzz tmin fuzz_target_1 fuzz/artifacts/fuzz_target_1/crash-bd6a569f4d72f81386f4c3e7968bc01c9eff7bd0
 
-cargo fuzz tmin --runs 255000 fuzz_target_1 fuzz/artifacts/fuzz_target_1/crash-eb68b72d2fd8c1a93dc55d1cd51ada454504f617
+cargo fuzz tmin --runs 255000 fuzz_target_2 fuzz/artifacts/fuzz_target_2/crash-92b8896cc3454111624b8be0ebd7c9d289068931
 
 rm fuzz/coverage/fuzz_target_1/coverage.profdata
 cargo fuzz coverage fuzz_target_1
