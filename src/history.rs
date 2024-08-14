@@ -1,7 +1,6 @@
+use std::collections::BTreeSet;
 use std::hash::Hash;
 use std::{collections::HashSet, hash::Hasher, rc::Rc};
-
-use crate::rc_hashable::RcHashable;
 
 // TODO FIXME switch to handle based indexing and store elements in parent container
 
@@ -24,31 +23,39 @@ pub trait History<T> {
 
 // starting from the heads to are depth traversal or so and break if you find a remote head?
 
-#[derive(Debug)]
+#[derive(Debug, PartialOrd, Ord)]
 pub struct DAGHistoryEntry<T> {
     pub value: T,
-    pub parents: HashSet<RcHashable<DAGHistoryEntry<T>>>,
+    pub parents: BTreeSet<Rc<DAGHistoryEntry<T>>>,
 }
+
+impl<T: PartialEq> PartialEq for DAGHistoryEntry<T> {
+    fn eq(&self, other: &Self) -> bool {
+        self.value == other.value && self.parents == other.parents
+    }
+}
+
+impl<T: PartialEq> Eq for DAGHistoryEntry<T> {}
 
 #[derive(Debug)]
 pub struct DAGHistory<T> {
-    pub heads: HashSet<RcHashable<DAGHistoryEntry<T>>>,
-    pub history: Vec<RcHashable<DAGHistoryEntry<T>>>,
+    pub heads: BTreeSet<Rc<DAGHistoryEntry<T>>>,
+    pub history: Vec<Rc<DAGHistoryEntry<T>>>,
 }
 
-impl<T> History<T> for DAGHistory<T> {
-    type Item = RcHashable<DAGHistoryEntry<T>>;
+impl<T: Ord> History<T> for DAGHistory<T> {
+    type Item = Rc<DAGHistoryEntry<T>>;
 
     fn new() -> Self {
         Self {
-            heads: HashSet::new(),
+            heads: BTreeSet::new(),
             history: Vec::new(),
         }
     }
 
     fn add_value(&mut self, value: T) {
         let heads = std::mem::take(&mut self.heads);
-        let entry = RcHashable::new(DAGHistoryEntry {
+        let entry = Rc::new(DAGHistoryEntry {
             value: value,
             parents: heads,
         });
@@ -56,7 +63,7 @@ impl<T> History<T> for DAGHistory<T> {
     }
 
     fn add_entry(&mut self, entry: Self::Item) {
-        for parent in &entry.0.parents {
+        for parent in &entry.parents {
             self.heads.remove(parent);
         }
         self.heads.insert(entry.clone());
@@ -65,7 +72,7 @@ impl<T> History<T> for DAGHistory<T> {
 
     fn new_for_other(&self, other: &Self) -> Vec<Self::Item> {
         let mut result = Vec::new();
-        let mut visited_nodes = HashSet::new();
+        let mut visited_nodes = BTreeSet::new();
         visited_nodes.extend(other.heads.iter().cloned());
 
         for head in &self.heads {
@@ -76,17 +83,17 @@ impl<T> History<T> for DAGHistory<T> {
     }
 }
 
-impl<T> DAGHistory<T> {
+impl<T: Ord> DAGHistory<T> {
     fn visit(
-        result: &mut Vec<RcHashable<DAGHistoryEntry<T>>>,
-        visited_nodes: &mut HashSet<RcHashable<DAGHistoryEntry<T>>>,
-        node: &RcHashable<DAGHistoryEntry<T>>,
+        result: &mut Vec<Rc<DAGHistoryEntry<T>>>,
+        visited_nodes: &mut BTreeSet<Rc<DAGHistoryEntry<T>>>,
+        node: &Rc<DAGHistoryEntry<T>>,
     ) {
         if visited_nodes.contains(node) {
             return;
         }
 
-        for parent in &node.0.parents {
+        for parent in &node.parents {
             Self::visit(result, visited_nodes, &parent)
         }
 

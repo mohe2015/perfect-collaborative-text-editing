@@ -14,13 +14,13 @@ use tracing::{info, trace};
 use crate::handle_vec::{Handle, HandleVec};
 use crate::history::{DAGHistory, History};
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq, Eq, PartialOrd, Ord)]
 pub enum Message {
     Insert(InsertMessage),
     Delete(DeleteMessage),
 }
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq, Eq, PartialOrd, Ord)]
 pub struct InsertMessage {
     pub left_replica_id: Rc<String>,
     pub left_counter: usize,
@@ -31,7 +31,7 @@ pub struct InsertMessage {
     pub character: char,
 }
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq, Eq, PartialOrd, Ord)]
 pub struct DeleteMessage {
     pub replica_id: Rc<String>,
     pub counter: usize,
@@ -264,7 +264,7 @@ impl Pcte {
 
         info!("to self {:?}", &new_for_self);
         for new_self in new_for_self {
-            match &new_self.0.value {
+            match &new_self.value {
                 Message::Insert(insert) => self.insert_remote(insert),
                 Message::Delete(delete) => self.delete_remote(delete),
             }
@@ -273,7 +273,7 @@ impl Pcte {
 
         info!("to other {:?}", &new_for_other);
         for new_other in new_for_other {
-            match &new_other.0.value {
+            match &new_other.value {
                 Message::Insert(insert) => other.insert_remote(insert),
                 Message::Delete(delete) => other.delete_remote(delete),
             }

@@ -77,9 +77,9 @@ impl<'a> arbitrary::Arbitrary<'a> for FixtureOperations {
 }
 
 fuzz_target!(|data: FixtureOperations| {
-    //let subscriber = tracing_subscriber::FmtSubscriber::new();
+    let subscriber = tracing_subscriber::FmtSubscriber::new();
     // use that subscriber to process traces emitted after this point
-    //tracing::subscriber::set_global_default(subscriber).unwrap();
+    tracing::subscriber::set_global_default(subscriber).unwrap();
 
     let mut replicas = Vec::new();
     for operation in data.operations {
