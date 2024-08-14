@@ -72,7 +72,6 @@ impl<T> History<T> for DAGHistory<T> {
             DAGHistory::visit(&mut result, &mut visited_nodes, head)
         }
 
-        result.reverse();
         result
     }
 }

@@ -9,6 +9,8 @@ use std::{
     rc::Rc,
 };
 
+use tracing::{info, trace};
+
 use crate::handle_vec::{Handle, HandleVec};
 use crate::history::{DAGHistory, History};
 
@@ -260,6 +262,7 @@ impl Pcte {
         let new_for_self = other.history.new_for_other(&self.history);
         let new_for_other = self.history.new_for_other(&other.history);
 
+        info!("to self {:?}", &new_for_self);
         for new_self in new_for_self {
             match &new_self.0.value {
                 Message::Insert(insert) => self.insert_remote(insert),
@@ -268,6 +271,7 @@ impl Pcte {
             self.history.add_entry(new_self);
         }
 
+        info!("to other {:?}", &new_for_other);
         for new_other in new_for_other {
             match &new_other.0.value {
                 Message::Insert(insert) => other.insert_remote(insert),
