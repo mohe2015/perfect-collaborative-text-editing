@@ -43,7 +43,9 @@ pub struct DAGHistory<T> {
     pub history: Vec<Rc<DAGHistoryEntry<T>>>,
 }
 
-impl<T: Ord> History<T> for DAGHistory<T> {
+// TODO fuzz this
+
+impl<T: Ord + std::fmt::Debug> History<T> for DAGHistory<T> {
     type Item = Rc<DAGHistoryEntry<T>>;
 
     fn new() -> Self {
@@ -70,6 +72,7 @@ impl<T: Ord> History<T> for DAGHistory<T> {
         self.history.push(entry);
     }
 
+    #[tracing::instrument]
     fn new_for_other(&self, other: &Self) -> Vec<Self::Item> {
         let mut result = Vec::new();
         let mut visited_nodes = BTreeSet::new();

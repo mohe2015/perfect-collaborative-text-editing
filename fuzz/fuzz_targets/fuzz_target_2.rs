@@ -5,6 +5,10 @@ use std::{rc::Rc, sync::Once};
 
 use libfuzzer_sys::fuzz_target;
 use perfect_collaborative_text_editing::pcte::Pcte;
+use tracing::{level_filters::LevelFilter, trace, Level};
+use tracing_subscriber::{
+    fmt::SubscriberBuilder, layer::SubscriberExt as _, util::SubscriberInitExt as _, Layer as _,
+};
 
 #[derive(Debug)]
 pub enum FixtureOperation {
@@ -80,9 +84,13 @@ static START: Once = Once::new();
 
 fuzz_target!(|data: FixtureOperations| {
     START.call_once(|| {
-        let subscriber = tracing_subscriber::FmtSubscriber::new();
-        tracing::subscriber::set_global_default(subscriber).unwrap();
+        let fmt_layer = tracing_subscriber::fmt::layer();
+        tracing_subscriber::registry()
+            .with(fmt_layer.with_filter(LevelFilter::TRACE))
+            .init();
     });
+
+    trace!("test");
 
     let mut replicas = Vec::new();
     for operation in data.operations {
