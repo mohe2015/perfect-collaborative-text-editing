@@ -50,8 +50,10 @@ jobs:
     - run: rustup default nightly
     - name: Install cargo-fuzz
       run: cargo install cargo-fuzz
-    - name: Fuzzing
+    - name: Fuzzing 1
       run: cargo fuzz run --jobs 4 fuzz_target_1 -- -max_total_time=60
+    - name: Fuzzing 2
+      run: cargo fuzz run --jobs 4 fuzz_target_2 -- -max_total_time=60
     #- name: Measure fuzzing coverage
     #  run: cargo fuzz coverage fuzz_target_1
     #- name: Output fuzzing coverage
