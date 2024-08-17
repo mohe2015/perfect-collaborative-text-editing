@@ -64,6 +64,7 @@ impl<T: Ord + std::fmt::Debug> History<T> for DAGHistory<T> {
         self.heads.insert(entry);
     }
 
+    // TODO FIXME don't get the others object but create your own?
     fn add_entry(&mut self, entry: Self::Item) {
         for parent in &entry.parents {
             self.heads.remove(parent);
@@ -72,7 +73,7 @@ impl<T: Ord + std::fmt::Debug> History<T> for DAGHistory<T> {
         self.history.push(entry);
     }
 
-    #[tracing::instrument]
+    #[tracing::instrument(ret)]
     fn new_for_other(&self, other: &Self) -> Vec<Self::Item> {
         let mut result = Vec::new();
         let mut visited_nodes = BTreeSet::new();
