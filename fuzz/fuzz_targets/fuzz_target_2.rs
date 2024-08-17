@@ -1,7 +1,7 @@
 #![no_main]
 #![feature(get_many_mut)]
 
-use std::rc::Rc;
+use std::{rc::Rc, sync::Once};
 
 use libfuzzer_sys::fuzz_target;
 use perfect_collaborative_text_editing::pcte::Pcte;
@@ -76,10 +76,13 @@ impl<'a> arbitrary::Arbitrary<'a> for FixtureOperations {
     }
 }
 
+static START: Once = Once::new();
+
 fuzz_target!(|data: FixtureOperations| {
-    let subscriber = tracing_subscriber::FmtSubscriber::new();
-    // use that subscriber to process traces emitted after this point
-    tracing::subscriber::set_global_default(subscriber).unwrap();
+    START.call_once(|| {
+        let subscriber = tracing_subscriber::FmtSubscriber::new();
+        tracing::subscriber::set_global_default(subscriber).unwrap();
+    });
 
     let mut replicas = Vec::new();
     for operation in data.operations {

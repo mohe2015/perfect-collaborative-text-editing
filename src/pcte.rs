@@ -149,6 +149,11 @@ impl Pcte {
         });
         self.tree_nodes[left_origin].children.push(handle);
 
+        self.id_to_node.insert(
+            (self.replica_id.clone(), self.counter),
+            (left_origin, right_origin),
+        );
+
         self.history.add_value(Message::Insert(InsertMessage {
             left_replica_id: self.nodes[self.tree_nodes[left_origin].node_handle]
                 .replica_id
@@ -241,6 +246,8 @@ impl Pcte {
     }
 
     fn delete_remote(&mut self, delete: &DeleteMessage) {
+        info!("{:?}", delete);
+
         let (left_origin, right_origin) = self
             .id_to_node
             .get(&(delete.replica_id.clone(), delete.counter))
