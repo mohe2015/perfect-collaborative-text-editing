@@ -276,13 +276,13 @@ mod tests {
             history2.add_entry(entry);
         }
 
-        assert_eq!(history1.heads, BTreeSet::from_iter([a.clone()]));
-        assert_eq!(history2.heads, BTreeSet::from_iter([a.clone()]));
+        assert_eq!(history1.heads, HashSet::from_iter([a.clone()]));
+        assert_eq!(history2.heads, HashSet::from_iter([a.clone()]));
 
         let b = history2.add_value("b");
 
-        assert_eq!(history1.heads, BTreeSet::from_iter([a.clone()]));
-        assert_eq!(history2.heads, BTreeSet::from_iter([b.clone()]));
+        assert_eq!(history1.heads, HashSet::from_iter([a.clone()]));
+        assert_eq!(history2.heads, HashSet::from_iter([b.clone()]));
 
         let new_for_history1 = history2.new_for_other(&history1);
         assert_eq!(new_for_history1, Vec::from_iter([b.clone()]));
