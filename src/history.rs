@@ -4,6 +4,8 @@ use std::{collections::HashSet, hash::Hasher, rc::Rc};
 
 // TODO FIXME switch to handle based indexing and store elements in parent container
 
+// TODO FIXME implement this with "network" in between because otherwise we just share the data structure itself, which is cheating
+
 pub trait History<T> {
     type Item;
 
@@ -143,10 +145,10 @@ mod tests {
         let mut history2 = DAGHistory::new();
 
         let new_for_history2 = history1.new_for_other(&history2);
-        assert_eq!(new_for_history2.len(), 1);
+        assert_eq!(new_for_history2, Vec::from_iter([a.clone()]));
 
         let new_for_history1 = history2.new_for_other(&history1);
-        assert_eq!(new_for_history1.len(), 0);
+        assert_eq!(new_for_history1, Vec::from_iter([]));
 
         for entry in new_for_history2 {
             history2.add_entry(entry);
@@ -160,10 +162,10 @@ mod tests {
         assert_eq!(history1.heads, BTreeSet::from_iter([a.clone()]));
         assert_eq!(history2.heads, BTreeSet::from_iter([b.clone()]));
 
-        let new_for_history2 = history1.new_for_other(&history2);
-        assert_eq!(new_for_history2.len(), 1);
-
         let new_for_history1 = history2.new_for_other(&history1);
-        assert_eq!(new_for_history1.len(), 0);
+        assert_eq!(new_for_history1, Vec::from_iter([b.clone()]));
+
+        let new_for_history2 = history1.new_for_other(&history2);
+        assert_eq!(new_for_history2, Vec::from_iter([])); // a
     }
 }
