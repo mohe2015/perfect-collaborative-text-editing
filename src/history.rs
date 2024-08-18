@@ -11,7 +11,7 @@ pub trait History<T> {
 
     fn add_entry(&mut self, entry: Self::Item);
 
-    fn add_value(&mut self, value: T);
+    fn add_value(&mut self, value: T) -> Self::Item;
 
     fn new_for_other(&self, other: &Self) -> Vec<Self::Item>;
 }
@@ -55,13 +55,14 @@ impl<T: Ord + std::fmt::Debug> History<T> for DAGHistory<T> {
         }
     }
 
-    fn add_value(&mut self, value: T) {
+    fn add_value(&mut self, value: T) -> Self::Item {
         let heads = std::mem::take(&mut self.heads);
         let entry = Rc::new(DAGHistoryEntry {
             value: value,
             parents: heads,
         });
-        self.heads.insert(entry);
+        self.heads.insert(entry.clone());
+        entry
     }
 
     // TODO FIXME don't get the others object but create your own?
@@ -137,7 +138,7 @@ mod tests {
     #[test]
     fn it_works2() {
         let mut history1 = DAGHistory::new();
-        history1.add_value("a");
+        let a = history1.add_value("a");
 
         let mut history2 = DAGHistory::new();
 
@@ -151,7 +152,13 @@ mod tests {
             history2.add_entry(entry);
         }
 
-        history2.add_value("b");
+        assert_eq!(history1.heads, BTreeSet::from_iter([a.clone()]));
+        assert_eq!(history2.heads, BTreeSet::from_iter([a.clone()]));
+
+        let b = history2.add_value("b");
+
+        assert_eq!(history1.heads, BTreeSet::from_iter([a.clone()]));
+        assert_eq!(history2.heads, BTreeSet::from_iter([b.clone()]));
 
         let new_for_history2 = history1.new_for_other(&history2);
         assert_eq!(new_for_history2.len(), 1);
