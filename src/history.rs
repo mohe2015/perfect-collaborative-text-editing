@@ -1,6 +1,9 @@
+use std::cmp::Ordering;
 use std::collections::{BTreeMap, BTreeSet, HashMap};
 use std::hash::Hash;
 use std::{collections::HashSet, hash::Hasher, rc::Rc};
+
+use itertools::Itertools;
 
 // TODO FIXME switch to handle based indexing and store elements in parent container
 
@@ -28,7 +31,43 @@ pub struct VectorClock {
 
 impl PartialOrd for VectorClock {
     fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
-        todo!()
+        let mut result = Ordering::Equal;
+        for cmp in self
+            .inner
+            .iter()
+            .merge_join_by(other.inner.iter(), |a, b| a.cmp(b))
+        {
+            match cmp {
+                itertools::EitherOrBoth::Both((a, ac), (b, bc)) => match ac.cmp(bc) {
+                    Ordering::Less => {
+                        if result == Ordering::Greater {
+                            return None;
+                        }
+                        result = Ordering::Less;
+                    }
+                    Ordering::Equal => {}
+                    Ordering::Greater => {
+                        if result == Ordering::Less {
+                            return None;
+                        }
+                        result = Ordering::Greater;
+                    }
+                },
+                itertools::EitherOrBoth::Left(_) => {
+                    if result == Ordering::Less {
+                        return None;
+                    }
+                    result = Ordering::Greater;
+                }
+                itertools::EitherOrBoth::Right(_) => {
+                    if result == Ordering::Greater {
+                        return None;
+                    }
+                    result == Ordering::Less;
+                }
+            }
+        }
+        Some(result)
     }
 }
 
