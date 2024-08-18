@@ -1,9 +1,9 @@
+use itertools::Itertools;
 use std::cmp::Ordering;
 use std::collections::{BTreeMap, BTreeSet, HashMap};
+use std::fmt::Debug;
 use std::hash::Hash;
 use std::{collections::HashSet, hash::Hasher, rc::Rc};
-
-use itertools::Itertools;
 
 // TODO FIXME switch to handle based indexing and store elements in parent container
 
@@ -119,7 +119,7 @@ pub struct VectorClockHistory<T> {
     pub replica_id: String,
 }
 
-impl<T> History<T> for VectorClockHistory<T> {
+impl<T: Debug> History<T> for VectorClockHistory<T> {
     type Item = Rc<VectorClockHistoryEntry<T>>;
 
     fn new(replica_id: String) -> Self {
@@ -150,6 +150,7 @@ impl<T> History<T> for VectorClockHistory<T> {
         entry
     }
 
+    #[tracing::instrument(ret)]
     fn new_for_other(&mut self, other: &Self) -> Vec<Self::Item> {
         *(self.clock.inner.get_mut(&self.replica_id).unwrap()) += 1;
 
@@ -256,10 +257,28 @@ impl<T: Ord> DAGHistory<T> {
 
 #[cfg(test)]
 mod tests {
+    use std::sync::Once;
+
+    use tracing::level_filters::LevelFilter;
+    use tracing_subscriber::{layer::SubscriberExt as _, util::SubscriberInitExt as _, Layer as _};
+
     use super::*;
+
+    static START: Once = Once::new();
+
+    fn tracing() {
+        START.call_once(|| {
+            let fmt_layer = tracing_subscriber::fmt::layer();
+            tracing_subscriber::registry()
+                .with(fmt_layer.with_filter(LevelFilter::TRACE))
+                .init();
+        });
+    }
 
     #[test]
     fn vector_clock() {
+        tracing();
+
         let vector_clocka = VectorClock {
             inner: BTreeMap::from_iter([("a".to_owned(), 1)]),
         };
