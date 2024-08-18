@@ -49,7 +49,7 @@ impl PartialOrd for VectorClock {
         for cmp in self
             .inner
             .iter()
-            .merge_join_by(other.inner.iter(), |a, b| a.cmp(b))
+            .merge_join_by(other.inner.iter(), |(a, av), (b, bv)| a.cmp(b))
         {
             match cmp {
                 itertools::EitherOrBoth::Both((a, ac), (b, bc)) => match ac.cmp(bc) {
@@ -77,7 +77,7 @@ impl PartialOrd for VectorClock {
                     if result == Ordering::Greater {
                         return None;
                     }
-                    result == Ordering::Less;
+                    result = Ordering::Less;
                 }
             }
         }
@@ -257,6 +257,18 @@ impl<T: Ord> DAGHistory<T> {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn vector_clock() {
+        let vector_clocka = VectorClock {
+            inner: BTreeMap::from_iter([("a".to_owned(), 1)]),
+        };
+        let vector_clockb = VectorClock {
+            inner: BTreeMap::from_iter([("b".to_owned(), 1)]),
+        };
+        assert!(!(vector_clocka < vector_clockb));
+        assert!(!(vector_clocka > vector_clockb));
+    }
 
     #[test]
     fn it_works() {
