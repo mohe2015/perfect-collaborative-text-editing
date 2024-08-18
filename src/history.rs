@@ -71,10 +71,21 @@ impl PartialOrd for VectorClock {
     }
 }
 
-#[derive(PartialEq, Eq, Hash)]
 pub struct VectorClockHistoryEntry<T> {
     pub value: T,
     pub clock: VectorClock,
+}
+
+impl<T> PartialEq for VectorClockHistoryEntry<T> {
+    fn eq(&self, other: &Self) -> bool {
+        self.clock == other.clock
+    }
+}
+
+impl<T> PartialOrd for VectorClockHistoryEntry<T> {
+    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
+        self.clock.partial_cmp(&other.clock)
+    }
 }
 
 pub struct VectorClockHistory<T> {
@@ -98,8 +109,7 @@ impl<T: Eq + Hash> History<T> for VectorClockHistory<T> {
 
     fn add_entry(&mut self, entry: Self::Item) {
         self.history.push(entry.clone());
-        self.heads.insert(entry.clone());
-        // TODO FIXME remove unneeded heads
+        self.heads.retain(|elem| entry.clone() > *elem)
     }
 
     fn add_value(&mut self, value: T) -> Self::Item {
