@@ -1,4 +1,4 @@
-use std::collections::BTreeSet;
+use std::collections::{BTreeSet, HashMap};
 use std::hash::Hash;
 use std::{collections::HashSet, hash::Hasher, rc::Rc};
 
@@ -6,16 +6,65 @@ use std::{collections::HashSet, hash::Hasher, rc::Rc};
 
 // TODO FIXME implement this with "network" in between because otherwise we just share the data structure itself, which is cheating
 
+// use quic and then two channels, ohne high priority, one low priority
+// also support webrtc and webtransport
+
 pub trait History<T> {
     type Item;
 
-    fn new() -> Self;
+    fn new(replica_id: String) -> Self;
 
     fn add_entry(&mut self, entry: Self::Item);
 
     fn add_value(&mut self, value: T) -> Self::Item;
 
     fn new_for_other(&self, other: &Self) -> Vec<Self::Item>;
+}
+
+#[derive(Clone)]
+pub struct VectorClock {
+    inner: HashMap<String, usize>,
+}
+
+pub struct VectorClockHistoryEntry<T> {
+    pub value: T,
+    pub clock: VectorClock,
+}
+
+pub struct VectorClockHistory<T> {
+    pub heads: BTreeSet<Rc<VectorClockHistoryEntry<T>>>,
+    pub history: Vec<Rc<VectorClockHistoryEntry<T>>>,
+    pub clock: VectorClock,
+}
+
+impl<T> History<T> for VectorClockHistory<T> {
+    type Item = VectorClockHistoryEntry<T>;
+
+    fn new(replica_id: String) -> Self {
+        Self {
+            heads: BTreeSet::new(),
+            history: Vec::new(),
+            clock: VectorClock {
+                inner: HashMap::from_iter([(replica_id, 1)]),
+            },
+        }
+    }
+
+    fn add_entry(&mut self, entry: Self::Item) {}
+
+    fn add_value(&mut self, value: T) -> Self::Item {
+        let entry = VectorClockHistoryEntry {
+            value,
+            clock: self.clock.clone(),
+        };
+        self.history.push(entry);
+        self.heads.insert(entry);
+        entry
+    }
+
+    fn new_for_other(&self, other: &Self) -> Vec<Self::Item> {
+        todo!()
+    }
 }
 
 // https://en.wikipedia.org/wiki/Topological_sorting
