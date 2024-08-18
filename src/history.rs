@@ -88,6 +88,14 @@ impl<T> PartialOrd for VectorClockHistoryEntry<T> {
     }
 }
 
+impl<T> Eq for VectorClockHistoryEntry<T> {}
+
+impl<T> Hash for VectorClockHistoryEntry<T> {
+    fn hash<H: Hasher>(&self, state: &mut H) {
+        self.clock.hash(state);
+    }
+}
+
 pub struct VectorClockHistory<T> {
     pub heads: HashSet<Rc<VectorClockHistoryEntry<T>>>,
     pub history: Vec<Rc<VectorClockHistoryEntry<T>>>,
@@ -109,7 +117,8 @@ impl<T: Eq + Hash> History<T> for VectorClockHistory<T> {
 
     fn add_entry(&mut self, entry: Self::Item) {
         self.history.push(entry.clone());
-        self.heads.retain(|elem| entry.clone() > *elem)
+        self.heads.retain(|elem| !(elem < &entry));
+        self.heads.insert(entry);
     }
 
     fn add_value(&mut self, value: T) -> Self::Item {
