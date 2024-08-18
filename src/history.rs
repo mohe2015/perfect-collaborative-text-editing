@@ -96,7 +96,11 @@ impl<T: Eq + Hash> History<T> for VectorClockHistory<T> {
         }
     }
 
-    fn add_entry(&mut self, entry: Self::Item) {}
+    fn add_entry(&mut self, entry: Self::Item) {
+        self.history.push(entry.clone());
+        self.heads.insert(entry.clone());
+        // TODO FIXME remove unneeded heads
+    }
 
     fn add_value(&mut self, value: T) -> Self::Item {
         let entry = Rc::new(VectorClockHistoryEntry {
