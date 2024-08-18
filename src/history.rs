@@ -24,7 +24,7 @@ pub trait History<T> {
     fn new_for_other(&self, other: &Self) -> Vec<Self::Item>;
 }
 
-#[derive(Clone, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct VectorClock {
     inner: BTreeMap<String, usize>,
 }
@@ -71,6 +71,7 @@ impl PartialOrd for VectorClock {
     }
 }
 
+#[derive(Debug)]
 pub struct VectorClockHistoryEntry<T> {
     pub value: T,
     pub clock: VectorClock,
@@ -96,13 +97,14 @@ impl<T> Hash for VectorClockHistoryEntry<T> {
     }
 }
 
+#[derive(Debug)]
 pub struct VectorClockHistory<T> {
     pub heads: HashSet<Rc<VectorClockHistoryEntry<T>>>,
     pub history: Vec<Rc<VectorClockHistoryEntry<T>>>,
     pub clock: VectorClock,
 }
 
-impl<T: Eq + Hash> History<T> for VectorClockHistory<T> {
+impl<T> History<T> for VectorClockHistory<T> {
     type Item = Rc<VectorClockHistoryEntry<T>>;
 
     fn new(replica_id: String) -> Self {
@@ -142,6 +144,8 @@ impl<T: Eq + Hash> History<T> for VectorClockHistory<T> {
 // parents would need to be traversed first, oh no
 
 // starting from the heads to are depth traversal or so and break if you find a remote head?
+
+// see discussion in computer stuff
 
 #[derive(Debug, PartialOrd, Ord)]
 pub struct DAGHistoryEntry<T> {
@@ -233,10 +237,10 @@ mod tests {
 
     #[test]
     fn it_works() {
-        let mut history1 = DAGHistory::new("a".to_string());
+        let mut history1 = VectorClockHistory::new("a".to_string());
         history1.add_value("a");
 
-        let mut history2 = DAGHistory::new("b".to_string());
+        let mut history2 = VectorClockHistory::new("b".to_string());
 
         let new_for_history2 = history1.new_for_other(&history2);
         assert_eq!(new_for_history2.len(), 1);
@@ -257,10 +261,10 @@ mod tests {
 
     #[test]
     fn it_works2() {
-        let mut history1 = DAGHistory::new("a".to_string());
+        let mut history1 = VectorClockHistory::new("a".to_string());
         let a = history1.add_value("a");
 
-        let mut history2 = DAGHistory::new("b".to_string());
+        let mut history2 = VectorClockHistory::new("b".to_string());
 
         let new_for_history2 = history1.new_for_other(&history2);
         assert_eq!(new_for_history2, Vec::from_iter([a.clone()]));

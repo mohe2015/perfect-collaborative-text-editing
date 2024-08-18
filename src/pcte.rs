@@ -12,7 +12,7 @@ use std::{
 use tracing::{info, trace};
 
 use crate::handle_vec::{Handle, HandleVec};
-use crate::history::{DAGHistory, History};
+use crate::history::{DAGHistory, History, VectorClockHistory};
 
 #[derive(Debug, PartialEq, Eq, PartialOrd, Ord)]
 pub enum Message {
@@ -41,7 +41,7 @@ pub struct DeleteMessage {
 pub struct Pcte {
     pub replica_id: Rc<String>,
     pub counter: usize,
-    pub history: DAGHistory<Message>,
+    pub history: VectorClockHistory<Message>,
     pub nodes: HandleVec<PcteNode>,
     pub tree_nodes: HandleVec<PcteTreeNode>,
     pub id_to_node: HashMap<(Rc<String>, usize), (Handle<PcteTreeNode>, Handle<PcteTreeNode>)>,
@@ -85,9 +85,9 @@ impl Pcte {
             children: Vec::new(),
         });
         Self {
-            replica_id,
+            replica_id: replica_id.clone(),
             counter: 0,
-            history: DAGHistory::new(),
+            history: VectorClockHistory::new(replica_id.to_string()),
             nodes,
             tree_nodes,
             id_to_node: HashMap::from([(
