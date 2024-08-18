@@ -134,7 +134,11 @@ impl<T> History<T> for VectorClockHistory<T> {
     }
 
     fn new_for_other(&self, other: &Self) -> Vec<Self::Item> {
-        todo!()
+        self.history
+            .iter()
+            .cloned()
+            .filter(|elem| other.heads.iter().any(|head| !(head > elem)))
+            .collect()
     }
 }
 
