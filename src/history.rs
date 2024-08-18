@@ -21,12 +21,26 @@ pub trait History<T> {
 
     fn add_value(&mut self, value: T) -> Self::Item;
 
-    fn new_for_other(&self, other: &Self) -> Vec<Self::Item>;
+    fn new_for_other(&mut self, other: &Self) -> Vec<Self::Item>;
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct VectorClock {
     inner: BTreeMap<String, usize>,
+}
+
+impl VectorClock {
+    pub fn update_with(&mut self, other: &VectorClock) {
+        other
+            .inner
+            .iter()
+            .for_each(|(key, value)| match self.inner.get_mut(key) {
+                Some(selfvalue) => *selfvalue = std::cmp::max(*selfvalue, *value),
+                None => {
+                    self.inner.insert(key.to_owned(), *value);
+                }
+            })
+    }
 }
 
 impl PartialOrd for VectorClock {
@@ -102,6 +116,7 @@ pub struct VectorClockHistory<T> {
     pub heads: HashSet<Rc<VectorClockHistoryEntry<T>>>,
     pub history: Vec<Rc<VectorClockHistoryEntry<T>>>,
     pub clock: VectorClock,
+    pub replica_id: String,
 }
 
 impl<T> History<T> for VectorClockHistory<T> {
@@ -109,6 +124,7 @@ impl<T> History<T> for VectorClockHistory<T> {
 
     fn new(replica_id: String) -> Self {
         Self {
+            replica_id: replica_id.clone(),
             heads: HashSet::new(),
             history: Vec::new(),
             clock: VectorClock {
@@ -120,6 +136,7 @@ impl<T> History<T> for VectorClockHistory<T> {
     fn add_entry(&mut self, entry: Self::Item) {
         self.history.push(entry.clone());
         self.heads.retain(|elem| !(elem < &entry));
+        self.clock.update_with(&entry.clock);
         self.heads.insert(entry);
     }
 
@@ -133,7 +150,9 @@ impl<T> History<T> for VectorClockHistory<T> {
         entry
     }
 
-    fn new_for_other(&self, other: &Self) -> Vec<Self::Item> {
+    fn new_for_other(&mut self, other: &Self) -> Vec<Self::Item> {
+        *(self.clock.inner.get_mut(&self.replica_id).unwrap()) += 1;
+
         self.history
             .iter()
             .cloned()
@@ -203,7 +222,7 @@ impl<T: Ord + std::fmt::Debug> History<T> for DAGHistory<T> {
     }
 
     #[tracing::instrument(ret)]
-    fn new_for_other(&self, other: &Self) -> Vec<Self::Item> {
+    fn new_for_other(&mut self, other: &Self) -> Vec<Self::Item> {
         let mut result = Vec::new();
         let mut visited_nodes = BTreeSet::new();
         visited_nodes.extend(other.heads.iter().cloned());
