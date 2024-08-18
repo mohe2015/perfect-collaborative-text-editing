@@ -133,4 +133,30 @@ mod tests {
         let new_for_history1 = history2.new_for_other(&history1);
         assert_eq!(new_for_history1.len(), 0);
     }
+
+    #[test]
+    fn it_works2() {
+        let mut history1 = DAGHistory::new();
+        history1.add_value("a");
+
+        let mut history2 = DAGHistory::new();
+
+        let new_for_history2 = history1.new_for_other(&history2);
+        assert_eq!(new_for_history2.len(), 1);
+
+        let new_for_history1 = history2.new_for_other(&history1);
+        assert_eq!(new_for_history1.len(), 0);
+
+        for entry in new_for_history2 {
+            history2.add_entry(entry);
+        }
+
+        history2.add_value("b");
+
+        let new_for_history2 = history1.new_for_other(&history2);
+        assert_eq!(new_for_history2.len(), 1);
+
+        let new_for_history1 = history2.new_for_other(&history1);
+        assert_eq!(new_for_history1.len(), 0);
+    }
 }
