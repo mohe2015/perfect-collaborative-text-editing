@@ -168,7 +168,7 @@ pub struct DAGHistory<T> {
 impl<T: Ord + std::fmt::Debug> History<T> for DAGHistory<T> {
     type Item = Rc<DAGHistoryEntry<T>>;
 
-    fn new() -> Self {
+    fn new(replica_id: String) -> Self {
         Self {
             heads: BTreeSet::new(),
             history: Vec::new(),
@@ -233,10 +233,10 @@ mod tests {
 
     #[test]
     fn it_works() {
-        let mut history1 = DAGHistory::new();
+        let mut history1 = DAGHistory::new("a".to_string());
         history1.add_value("a");
 
-        let mut history2 = DAGHistory::new();
+        let mut history2 = DAGHistory::new("b".to_string());
 
         let new_for_history2 = history1.new_for_other(&history2);
         assert_eq!(new_for_history2.len(), 1);
@@ -257,10 +257,10 @@ mod tests {
 
     #[test]
     fn it_works2() {
-        let mut history1 = DAGHistory::new();
+        let mut history1 = DAGHistory::new("a".to_string());
         let a = history1.add_value("a");
 
-        let mut history2 = DAGHistory::new();
+        let mut history2 = DAGHistory::new("b".to_string());
 
         let new_for_history2 = history1.new_for_other(&history2);
         assert_eq!(new_for_history2, Vec::from_iter([a.clone()]));
