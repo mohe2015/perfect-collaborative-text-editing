@@ -1,4 +1,4 @@
-use std::collections::{BTreeSet, HashMap};
+use std::collections::{BTreeMap, BTreeSet, HashMap};
 use std::hash::Hash;
 use std::{collections::HashSet, hash::Hasher, rc::Rc};
 
@@ -21,31 +21,38 @@ pub trait History<T> {
     fn new_for_other(&self, other: &Self) -> Vec<Self::Item>;
 }
 
-#[derive(Clone)]
+#[derive(Clone, PartialEq, Eq, Hash)]
 pub struct VectorClock {
-    inner: HashMap<String, usize>,
+    inner: BTreeMap<String, usize>,
 }
 
+impl PartialOrd for VectorClock {
+    fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
+        todo!()
+    }
+}
+
+#[derive(PartialEq, Eq, Hash)]
 pub struct VectorClockHistoryEntry<T> {
     pub value: T,
     pub clock: VectorClock,
 }
 
 pub struct VectorClockHistory<T> {
-    pub heads: BTreeSet<Rc<VectorClockHistoryEntry<T>>>,
+    pub heads: HashSet<Rc<VectorClockHistoryEntry<T>>>,
     pub history: Vec<Rc<VectorClockHistoryEntry<T>>>,
     pub clock: VectorClock,
 }
 
-impl<T> History<T> for VectorClockHistory<T> {
-    type Item = VectorClockHistoryEntry<T>;
+impl<T: Eq + Hash> History<T> for VectorClockHistory<T> {
+    type Item = Rc<VectorClockHistoryEntry<T>>;
 
     fn new(replica_id: String) -> Self {
         Self {
-            heads: BTreeSet::new(),
+            heads: HashSet::new(),
             history: Vec::new(),
             clock: VectorClock {
-                inner: HashMap::from_iter([(replica_id, 1)]),
+                inner: BTreeMap::from_iter([(replica_id, 1)]),
             },
         }
     }
@@ -53,12 +60,12 @@ impl<T> History<T> for VectorClockHistory<T> {
     fn add_entry(&mut self, entry: Self::Item) {}
 
     fn add_value(&mut self, value: T) -> Self::Item {
-        let entry = VectorClockHistoryEntry {
+        let entry = Rc::new(VectorClockHistoryEntry {
             value,
             clock: self.clock.clone(),
-        };
-        self.history.push(entry);
-        self.heads.insert(entry);
+        });
+        self.history.push(entry.clone());
+        self.heads.insert(entry.clone());
         entry
     }
 
