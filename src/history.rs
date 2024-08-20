@@ -157,7 +157,13 @@ impl<T: Debug> History<T> for VectorClockHistory<T> {
         self.history
             .iter()
             .cloned()
-            .filter(|elem| other.heads.iter().any(|head| !(head > elem)))
+            .filter(|elem| {
+                other.heads.is_empty() ||
+                other.heads.iter().any(|head| {
+                    let ret = !(head > elem);
+                    ret
+                })
+            })
             .collect()
     }
 }
@@ -292,25 +298,25 @@ mod tests {
     #[test]
     fn it_works() {
         let mut history1 = VectorClockHistory::new("a".to_string());
-        history1.add_value("a");
+        let a = history1.add_value("a");
 
         let mut history2 = VectorClockHistory::new("b".to_string());
 
         let new_for_history2 = history1.new_for_other(&history2);
-        assert_eq!(new_for_history2.len(), 1);
+        assert_eq!(new_for_history2, [a]);
 
         let new_for_history1 = history2.new_for_other(&history1);
-        assert_eq!(new_for_history1.len(), 0);
+        assert_eq!(new_for_history1, []);
 
         for entry in new_for_history2 {
             history2.add_entry(entry);
         }
 
         let new_for_history2 = history1.new_for_other(&history2);
-        assert_eq!(new_for_history2.len(), 0);
+        assert_eq!(new_for_history2, []);
 
         let new_for_history1 = history2.new_for_other(&history1);
-        assert_eq!(new_for_history1.len(), 0);
+        assert_eq!(new_for_history1, []);
     }
 
     #[test]
@@ -321,10 +327,10 @@ mod tests {
         let mut history2 = VectorClockHistory::new("b".to_string());
 
         let new_for_history2 = history1.new_for_other(&history2);
-        assert_eq!(new_for_history2, Vec::from_iter([a.clone()]));
+        assert_eq!(new_for_history2, [a.clone()]);
 
         let new_for_history1 = history2.new_for_other(&history1);
-        assert_eq!(new_for_history1, Vec::from_iter([]));
+        assert_eq!(new_for_history1, []);
 
         for entry in new_for_history2 {
             history2.add_entry(entry);
@@ -339,9 +345,9 @@ mod tests {
         assert_eq!(history2.heads, HashSet::from_iter([b.clone()]));
 
         let new_for_history1 = history2.new_for_other(&history1);
-        assert_eq!(new_for_history1, Vec::from_iter([b.clone()]));
+        assert_eq!(new_for_history1, [b.clone()]);
 
         let new_for_history2 = history1.new_for_other(&history2);
-        assert_eq!(new_for_history2, Vec::from_iter([])); // a
+        assert_eq!(new_for_history2, []);
     }
 }
