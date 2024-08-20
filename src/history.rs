@@ -160,7 +160,7 @@ impl<T: Debug> History<T> for VectorClockHistory<T> {
             .filter(|elem| {
                 other.heads.is_empty() ||
                 other.heads.iter().any(|head| {
-                    let ret = !(head > elem);
+                    let ret = !(head >= elem);
                     ret
                 })
             })
