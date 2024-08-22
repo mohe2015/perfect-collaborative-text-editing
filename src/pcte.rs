@@ -9,66 +9,18 @@ use std::{
     rc::Rc,
 };
 
-use crate::history::{DAGHistory, History};
+use tracing::{info, trace};
 
-#[derive(Debug)]
-pub struct HandleVec<T>(Vec<T>);
+use crate::handle_vec::{Handle, HandleVec};
+use crate::history::{DAGHistory, History, VectorClockHistory};
 
-impl<T> HandleVec<T> {
-    pub fn new() -> Self {
-        HandleVec(Vec::new())
-    }
-
-    pub fn push(&mut self, value: T) -> Handle<T> {
-        let handle = self.0.len();
-        self.0.push(value);
-        Handle(handle, PhantomData)
-    }
-}
-
-pub struct Handle<T>(usize, PhantomData<T>);
-
-impl<T> Debug for Handle<T> {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        f.debug_tuple("Handle").field(&self.0).finish()
-    }
-}
-
-impl<T> PartialEq for Handle<T> {
-    fn eq(&self, other: &Self) -> bool {
-        self.0 == other.0 && self.1 == other.1
-    }
-}
-
-impl<T> Clone for Handle<T> {
-    fn clone(&self) -> Self {
-        Self(self.0.clone(), self.1.clone())
-    }
-}
-
-impl<T> Copy for Handle<T> {}
-
-impl<T> Index<Handle<T>> for HandleVec<T> {
-    type Output = T;
-
-    fn index(&self, handle: Handle<T>) -> &T {
-        &self.0[handle.0]
-    }
-}
-
-impl<T> IndexMut<Handle<T>> for HandleVec<T> {
-    fn index_mut(&mut self, handle: Handle<T>) -> &mut Self::Output {
-        &mut self.0[handle.0]
-    }
-}
-
-#[derive(Debug)]
+#[derive(Debug, PartialEq, Eq, PartialOrd, Ord)]
 pub enum Message {
     Insert(InsertMessage),
     Delete(DeleteMessage),
 }
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq, Eq, PartialOrd, Ord)]
 pub struct InsertMessage {
     pub left_replica_id: Rc<String>,
     pub left_counter: usize,
@@ -79,7 +31,7 @@ pub struct InsertMessage {
     pub character: char,
 }
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq, Eq, PartialOrd, Ord)]
 pub struct DeleteMessage {
     pub replica_id: Rc<String>,
     pub counter: usize,
@@ -89,7 +41,7 @@ pub struct DeleteMessage {
 pub struct Pcte {
     pub replica_id: Rc<String>,
     pub counter: usize,
-    pub history: DAGHistory<Message>,
+    pub history: VectorClockHistory<Message>,
     pub nodes: HandleVec<PcteNode>,
     pub tree_nodes: HandleVec<PcteTreeNode>,
     pub id_to_node: HashMap<(Rc<String>, usize), (Handle<PcteTreeNode>, Handle<PcteTreeNode>)>,
@@ -133,9 +85,9 @@ impl Pcte {
             children: Vec::new(),
         });
         Self {
-            replica_id,
+            replica_id: replica_id.clone(),
             counter: 0,
-            history: DAGHistory::new(),
+            history: VectorClockHistory::new(replica_id.to_string()),
             nodes,
             tree_nodes,
             id_to_node: HashMap::from([(
@@ -184,8 +136,6 @@ impl Pcte {
             .clone();
         let right_counter = self.nodes[self.tree_nodes[right_origin].node_handle].counter;
 
-        let dbg2 = self.nodes[self.tree_nodes[right_origin].node_handle].character;
-
         let left_origin = if index == 0 {
             self.left_origin_tree
         } else {
@@ -193,13 +143,16 @@ impl Pcte {
                 .unwrap()
         };
 
-        let dbg = self.nodes[self.tree_nodes[left_origin].node_handle].character;
-
         let handle = self.tree_nodes.push(PcteTreeNode {
             node_handle,
             children: Vec::new(),
         });
         self.tree_nodes[left_origin].children.push(handle);
+
+        self.id_to_node.insert(
+            (self.replica_id.clone(), self.counter),
+            (left_origin, right_origin),
+        );
 
         self.history.add_value(Message::Insert(InsertMessage {
             left_replica_id: self.nodes[self.tree_nodes[left_origin].node_handle]
@@ -230,8 +183,40 @@ impl Pcte {
             replica_id: insert.replica_id.clone(),
             counter: insert.counter,
         };
+        let node_handle = self.nodes.push(node);
 
-        todo!("index from replica id and counter to the node");
+        let (left_origin, _) = self
+            .id_to_node
+            .get(&(insert.left_replica_id.clone(), insert.left_counter))
+            .unwrap();
+
+        let (_, right_origin) = self
+            .id_to_node
+            .get(&(insert.right_replica_id.clone(), insert.right_counter))
+            .unwrap();
+
+        let left_tree_node_handle = self.tree_nodes.push(PcteTreeNode {
+            node_handle,
+            children: Vec::new(),
+        });
+        let right_tree_node_handle = self.tree_nodes.push(PcteTreeNode {
+            node_handle,
+            children: Vec::new(),
+        });
+
+        self.tree_nodes[left_origin]
+            .children
+            .push(left_tree_node_handle);
+        self.tree_nodes[right_origin]
+            .children
+            .push(right_tree_node_handle);
+
+        self.id_to_node.insert(
+            (insert.replica_id.clone(), insert.counter),
+            (left_tree_node_handle, right_tree_node_handle),
+        );
+
+        // TODO calculate position at which it was inserted
     }
 
     pub fn delete(&mut self, index: usize) {
@@ -260,6 +245,22 @@ impl Pcte {
         debug_assert_eq!(self.text(), text, "{:#?}", self);
     }
 
+    fn delete_remote(&mut self, delete: &DeleteMessage) {
+        info!("{:?}", delete);
+
+        let (left_origin, right_origin) = self
+            .id_to_node
+            .get(&(delete.replica_id.clone(), delete.counter))
+            .unwrap();
+
+        debug_assert_eq!(
+            self.tree_nodes[left_origin].node_handle,
+            self.tree_nodes[right_origin].node_handle
+        );
+
+        self.nodes[self.tree_nodes[left_origin].node_handle].character = None;
+    }
+
     pub fn text(&mut self) -> String {
         self.text_tree_node(self.left_origin_tree)
     }
@@ -268,15 +269,21 @@ impl Pcte {
         let new_for_self = other.history.new_for_other(&self.history);
         let new_for_other = self.history.new_for_other(&other.history);
 
+        info!("to self {:?}", &new_for_self);
         for new_self in new_for_self {
-            match &new_self.0.value {
+            match &new_self.value {
                 Message::Insert(insert) => self.insert_remote(insert),
-                Message::Delete(delete) => todo!(),
+                Message::Delete(delete) => self.delete_remote(delete),
             }
             self.history.add_entry(new_self);
         }
 
+        info!("to other {:?}", &new_for_other);
         for new_other in new_for_other {
+            match &new_other.value {
+                Message::Insert(insert) => other.insert_remote(insert),
+                Message::Delete(delete) => other.delete_remote(delete),
+            }
             other.history.add_entry(new_other);
         }
     }
@@ -288,16 +295,22 @@ impl Pcte {
         }
         let mut children: Vec<_> = self.tree_nodes[this].children.clone();
         children.sort_by_cached_key(|element| {
-            -isize::try_from(
-                self.node_last_node_and_index_including_deleted_of_node(
-                    self.right_origin_tree,
-                    self.tree_nodes[*element].node_handle,
-                    0,
+            (
+                -isize::try_from(
+                    self.node_last_node_and_index_including_deleted_of_node(
+                        self.right_origin_tree,
+                        self.tree_nodes[*element].node_handle,
+                        0,
+                    )
+                    .unwrap()
+                    .1,
                 )
-                .unwrap()
-                .1,
+                .unwrap(),
+                self.nodes[self.tree_nodes[element].node_handle]
+                    .replica_id
+                    .clone(),
+                self.nodes[self.tree_nodes[element].node_handle].counter,
             )
-            .unwrap()
         });
         for child in children {
             result.push_str(&self.text_tree_node(child))
@@ -318,16 +331,22 @@ impl Pcte {
         }
         let mut children: Vec<_> = self.tree_nodes[node].children.clone();
         children.sort_by_cached_key(|element| {
-            -isize::try_from(
-                self.node_last_node_and_index_including_deleted_of_node(
-                    self.right_origin_tree,
-                    self.tree_nodes[*element].node_handle,
-                    0,
+            (
+                -isize::try_from(
+                    self.node_last_node_and_index_including_deleted_of_node(
+                        self.right_origin_tree,
+                        self.tree_nodes[*element].node_handle,
+                        0,
+                    )
+                    .unwrap()
+                    .1,
                 )
-                .unwrap()
-                .1,
+                .unwrap(),
+                self.nodes[self.tree_nodes[element].node_handle]
+                    .replica_id
+                    .clone(),
+                self.nodes[self.tree_nodes[element].node_handle].counter,
             )
-            .unwrap()
         });
         for child in children {
             match self.node_at_index(child, index) {
@@ -351,6 +370,12 @@ impl Pcte {
             return Ok((this, index));
         }
         index += 1;
+        for child in &self.tree_nodes[this].children {
+            // chldren at the same place need to return the same value
+            if self.tree_nodes[child].node_handle == node {
+                return Ok((*child, index));
+            }
+        }
         for child in &self.tree_nodes[this].children {
             match self.node_last_node_and_index_including_deleted_of_node(*child, node, index) {
                 ok @ Ok(_) => return ok,
@@ -400,5 +425,18 @@ mod tests {
         pcte.delete(0);
         let text = pcte.text();
         assert_eq!(text, "o");
+    }
+
+    #[test]
+    fn it_works4() {
+        let mut pcte_a = Pcte::new(Rc::new("a".to_string()));
+        let mut pcte_b = Pcte::new(Rc::new("b".to_string()));
+        pcte_a.insert(0, 'a');
+        pcte_b.insert(0, 'b');
+        assert_eq!(pcte_a.text(), "a");
+        assert_eq!(pcte_b.text(), "b");
+        pcte_a.synchronize(&mut pcte_b);
+        assert_eq!(pcte_a.text(), "ab", "{:#?}", pcte_a);
+        assert_eq!(pcte_b.text(), "ab");
     }
 }
