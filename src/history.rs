@@ -145,8 +145,7 @@ impl<T: Debug> History<T> for VectorClockHistory<T> {
             value,
             clock: self.clock.clone(),
         });
-        self.history.push(entry.clone());
-        self.heads.insert(entry.clone());
+        self.add_entry(entry.clone());
         entry
     }
 
@@ -158,11 +157,11 @@ impl<T: Debug> History<T> for VectorClockHistory<T> {
             .iter()
             .cloned()
             .filter(|elem| {
-                other.heads.is_empty() ||
-                other.heads.iter().any(|head| {
-                    let ret = !(head >= elem);
-                    ret
-                })
+                other.heads.is_empty()
+                    || other.heads.iter().any(|head| {
+                        let ret = !(head >= elem);
+                        ret
+                    })
             })
             .collect()
     }
